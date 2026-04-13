@@ -12,7 +12,7 @@ package practica1;
  *  ALUMNOS:
  *      - Demian Romero Bautista  (lógica de red, protocolo)
  *      - Said Ferreira
- *      - Mateo                   (GUI — ver sección [GUI] abajo)
+ *      - Mateo Alejandro Jaimes Uribe       (GUI — ver sección [GUI] abajo)
  *
  * =====================================================================
  *
@@ -33,7 +33,7 @@ package practica1;
  *  ║  ─────────────────────────────────────────────────────────    ║
  *  ║  · Se abre justo antes de transferir bytes y se cierra        ║
  *  ║    al terminar. El servidor hace accept() cada vez.           ║
- *  ║  · Transporta bytes crudos (InputStream / OutputStream).     ║
+ *  ║  · Transporta bytes crudos (InputStream / OutputStream).      ║
  *  ║  · Soporta cualquier tipo de archivo sin corrupción.          ║
  *  ║  · Se leen EXACTAMENTE los bytes indicados en "tamanio":      ║
  *  ║    TCP es un flujo continuo y no sabe dónde termina un        ║
