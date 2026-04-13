@@ -12,7 +12,7 @@ package practica1;
  *  ALUMNOS:
  *      - Demian Romero Bautista  (lógica de red, protocolo)
  *      - Said Ferreira
- *      - Mateo Alejandro Jaimes Uribe       (GUI — ver sección [GUI] abajo)
+ *      - Mateo Alejandro Jaimes Uribe       (GUI — ver sección [GUI] abajoo)
  *
  * =====================================================================
  *

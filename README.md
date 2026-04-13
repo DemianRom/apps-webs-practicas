@@ -53,7 +53,7 @@ Todos los mensajes son objetos JSON en una sola línea, delimitados por `\n`. El
 {"cmd":"EXIT"}
 ```
 
-**Respuestas del servidor hacia el cliente:**
+**Respuestas del servidor hacia el clientes:**
 
 ```text
 {"status":"OK"}
