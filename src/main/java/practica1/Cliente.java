@@ -12,7 +12,7 @@ package practica1;
  *  ALUMNOS:
  *      - Demian Romero Bautista  (lógica de red, protocolo)
  *      - Said Ferreira
- *      - Mateo Alejandro Jaimes Uribe       (GUI — ver sección [GUI] abajoo)
+ *      - Mateo Alejandro Jaimes Uribe       (GUI — ver sección [GUI] abajo)
  *
  * =====================================================================
  *
@@ -151,7 +151,7 @@ package practica1;
  *  ║                                                               ║
  *  ║    new SwingWorker<Void, Integer>() {                         ║
  *  ║        protected Void doInBackground() {                      ║
- *  ║            subirArchivo();   // aquí va la llamada de red     ║
+ *  ║            cliente.subirArchivo(nombre);  // llamada de red   ║
  *  ║            return null;                                       ║
  *  ║        }                                                      ║
  *  ║        protected void done() {                                ║
@@ -198,12 +198,12 @@ package practica1;
  *  ║    · IP del servidor  (default "127.0.0.1")                   ║
  *  ║    · Puerto           (default 8000)                          ║
  *  ║    · Carpeta local    (JTextField + botón "Explorar")         ║
- *  ║  Esos valores reemplazan SERVER_IP, PUERTO_META y             ║
- *  ║  carpetaLocal antes de llamar a conectarMetadatos().          ║
+ *  ║  Esos valores se pasan a setServerIp(), setPuertoMeta() y     ║
+ *  ║  setCarpetaLocal() antes de llamar a conectarMetadatos().     ║
  *  ║                                                               ║
  *  ║  BUSCA EN EL CÓDIGO:  // [GUI]                                ║
  *  ║  Cada línea marcada con ese comentario indica exactamente      ║
- *  ║  qué entrada de consola o impresión debes reemplazar.         ║
+ *  ║  qué valor debe provenir de la interfaz gráfica.              ║
  *  ╚═══════════════════════════════════════════════════════════════╝
  *
  * =====================================================================
@@ -220,11 +220,13 @@ public class Cliente {
 
     // -----------------------------------------------------------------
     //  CONFIGURACIÓN DE RED
-    //  [GUI] Estos valores los captura el diálogo de inicio de sesión.
+    //  [GUI] Setear con setServerIp(), setPuertoMeta() y
+    //        setCarpetaLocal() desde el diálogo de inicio de sesión,
+    //        ANTES de llamar a conectarMetadatos().
     // -----------------------------------------------------------------
-    private static String SERVER_IP    = "127.0.0.1";
-    private static int    PUERTO_META  = 8000;
-    private static int    PUERTO_DATOS = 8001;
+    private static String serverIp    = "127.0.0.1";
+    private static int    puertoMeta  = 8000;
+    private static int    puertoDatos = 8001;
 
     private static final int BUFFER = 4096; // bloque de lectura/escritura (4 KB)
 
@@ -237,82 +239,127 @@ public class Cliente {
 
     // -----------------------------------------------------------------
     //  CARPETA LOCAL
-    //  [GUI] El diálogo de inicio de sesión permite cambiarla.
+    //  [GUI] Cambiar con setCarpetaLocal() antes de conectar.
     // -----------------------------------------------------------------
     private static String carpetaLocal =
             System.getProperty("user.home") + File.separator + "cliente_archivos";
 
-    // -----------------------------------------------------------------
-    //  CONSOLA  [GUI] Eliminar este Scanner al agregar la interfaz.
-    // -----------------------------------------------------------------
-    private static Scanner teclado = new Scanner(System.in);
-
 
     // =================================================================
-    //  MAIN
+    //  SETTERS DE CONFIGURACIÓN
+    //  [GUI] Llamar desde el diálogo de inicio de sesión.
     // =================================================================
 
-    public static void main(String[] args) {
+    /** Establece la IP del servidor antes de conectar. */
+    public static void setServerIp(String ip) {
+        serverIp = ip;
+    }
 
-        System.out.println("=====================================================");
-        System.out.println("  Práctica 1 — Transferencia de archivos  |  CLIENTE");
-        System.out.println("=====================================================\n");
+    /** Establece el puerto del canal de metadatos antes de conectar. */
+    public static void setPuertoMeta(int puerto) {
+        puertoMeta = puerto;
+    }
 
+    /** Establece la carpeta local de trabajo. Crea el directorio si no existe. */
+    public static void setCarpetaLocal(String ruta) {
+        carpetaLocal = ruta;
         crearCarpetaLocalSiNoExiste();
+    }
 
-        if (!conectarMetadatos()) {
-            System.out.println("[ERROR] No se pudo conectar al servidor.");
-            return;
+    /** Devuelve la ruta de la carpeta local actual. */
+    public static String getCarpetaLocal() {
+        return carpetaLocal;
+    }
+
+
+    // =================================================================
+    //  CONEXIÓN Y DESCONEXIÓN
+    // =================================================================
+
+    /**
+     * Abre el canal de METADATOS (puerto configurable, por defecto 8000).
+     *
+     * PrintWriter con autoFlush=true: cada println() envía los datos
+     * de inmediato sin esperar a que el buffer se llene. Es obligatorio
+     * en un protocolo pregunta-respuesta donde el servidor espera el
+     * mensaje completo antes de responder.
+     *
+     * [GUI] Llamar desde el botón "Conectar" del diálogo de inicio de
+     *       sesión, después de haber llamado a setServerIp(),
+     *       setPuertoMeta() y setCarpetaLocal().
+     *
+     * @return true si la conexión fue exitosa.
+     */
+    public static boolean conectarMetadatos() {
+        try {
+            socketMeta = new Socket(serverIp, puertoMeta);
+
+            salida  = new PrintWriter(
+                    new BufferedWriter(
+                            new OutputStreamWriter(socketMeta.getOutputStream())), true);
+
+            entrada = new BufferedReader(
+                    new InputStreamReader(socketMeta.getInputStream()));
+
+            return true;
+
+        } catch (IOException e) {
+            // [GUI] Mostrar JOptionPane.showMessageDialog con e.getMessage()
+            return false;
         }
+    }
 
-        // [GUI] Este bucle desaparece. La ventana principal escucha eventos
-        //       de botones y cada botón invoca directamente el método
-        //       correspondiente (subirArchivo(), descargarArchivo(), etc.)
-        //       dentro de un SwingWorker para no bloquear la interfaz.
-        boolean sesionActiva = true;
-        while (sesionActiva) {
-            mostrarMenu();
-            int opcion = leerOpcion();
-
-            switch (opcion) {
-                case 1  -> mostrarContenidoLocal();
-                case 2  -> mostrarContenidoRemoto();
-                case 3  -> subirArchivo();
-                case 4  -> descargarArchivo();
-                case 5  -> subirCarpeta();
-                case 6  -> descargarCarpeta();
-                case 7  -> borrarArchivoLocal();
-                case 8  -> borrarArchivoRemoto();
-                case 9  -> renombrarArchivoLocal();
-                case 10 -> renombrarArchivoRemoto();
-                case 11 -> renombrarCarpetaLocal();
-                case 12 -> renombrarCarpetaRemota();
-                case 13 -> sesionActiva = salir();
-                default -> System.out.println("[AVISO] Opción no válida (1-13).");
-            }
+    /**
+     * Cierra el canal de metadatos. Se llama una sola vez al terminar la sesión.
+     *
+     * [GUI] Llamar desde windowClosing() del JFrame principal.
+     */
+    public static void cerrarConexionMetadatos() {
+        try {
+            if (socketMeta != null && !socketMeta.isClosed()) socketMeta.close();
+        } catch (IOException e) {
+            // [GUI] Loguear si se desea, pero no es crítico al cerrar.
         }
+    }
 
-        cerrarConexionMetadatos();
+    /**
+     * Abre un socket nuevo en el canal de DATOS (puerto puertoMeta + 1).
+     *
+     * Intermitente: existe solo durante la transferencia de bytes.
+     * El servidor tiene un ServerSocket.accept() esperando cada vez
+     * que se abre este canal.
+     *
+     * @return Socket abierto, o null si falló la conexión.
+     */
+    private static Socket abrirCanalDatos() {
+        try {
+            return new Socket(serverIp, puertoDatos);
+        } catch (IOException e) {
+            // [GUI] Mostrar error de conexión de datos si se desea
+            return null;
+        }
+    }
+
+    /**
+     * Cierra el canal de datos al terminar cada transferencia.
+     *
+     * @param s Socket a cerrar.
+     */
+    private static void cerrarCanalDatos(Socket s) {
+        try {
+            if (s != null && !s.isClosed()) s.close();
+        } catch (IOException ignored) {}
     }
 
 
     // =================================================================
     //  UTILIDADES JSON
     //  Único punto de construcción y parseo de mensajes.
-    //  Si se cambia la librería JSON (Gson → Jackson, org.json, etc.)
-    //  solo hay que modificar estas dos funciones y los imports.
     // =================================================================
 
     /**
      * Serializa el JsonObject y lo envía al servidor como una línea.
      * El \n al final de println() actúa como delimitador de mensaje.
-     *
-     * Ejemplo de uso:
-     *   JsonObject cmd = new JsonObject();
-     *   cmd.addProperty("cmd", "DELETE");
-     *   cmd.addProperty("nombre", "foto.jpg");
-     *   enviarJson(cmd);
-     *   → envía:  {"cmd":"DELETE","nombre":"foto.jpg"}\n
      */
     private static void enviarJson(JsonObject json) {
         salida.println(json.toString());
@@ -337,7 +384,6 @@ public class Cliente {
     /**
      * Devuelve true si la respuesta NO es un error.
      * El campo "status" con valor "ERROR" es el único caso de fallo.
-     * Cualquier otro valor ("OK", "UPLOAD_OK", "DELETE_OK", etc.) es éxito.
      */
     private static boolean esExito(JsonObject resp) {
         if (resp == null) return false;
@@ -346,169 +392,24 @@ public class Cliente {
 
 
     // =================================================================
-    //  CONEXIÓN Y DESCONEXIÓN
-    // =================================================================
-
-    /**
-     * Abre el canal de METADATOS (puerto 8000).
-     *
-     * PrintWriter con autoFlush=true: cada println() envía los datos
-     * de inmediato sin esperar a que el buffer se llene. Es obligatorio
-     * en un protocolo pregunta-respuesta donde el servidor espera el
-     * mensaje completo antes de responder.
-     *
-     * [GUI] Llamar este método desde el botón "Conectar" del diálogo
-     *       de inicio de sesión, después de leer SERVER_IP y PUERTO_META.
-     *
-     * @return true si la conexión fue exitosa.
-     */
-    private static boolean conectarMetadatos() {
-        try {
-            System.out.println("[INFO] Conectando a " + SERVER_IP + ":" + PUERTO_META + " ...");
-            socketMeta = new Socket(SERVER_IP, PUERTO_META);
-
-            salida  = new PrintWriter(
-                    new BufferedWriter(
-                            new OutputStreamWriter(socketMeta.getOutputStream())), true);
-
-            entrada = new BufferedReader(
-                    new InputStreamReader(socketMeta.getInputStream()));
-
-            System.out.println("[INFO] Canal de metadatos listo.\n");
-            return true;
-
-        } catch (IOException e) {
-            System.out.println("[ERROR] conectarMetadatos(): " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Cierra el canal de metadatos. Se llama una sola vez al terminar la sesión.
-     *
-     * [GUI] Llamar desde windowClosing() del JFrame principal.
-     */
-    private static void cerrarConexionMetadatos() {
-        try {
-            if (socketMeta != null && !socketMeta.isClosed()) socketMeta.close();
-            System.out.println("[INFO] Sesión cerrada.");
-        } catch (IOException e) {
-            System.out.println("[ERROR] cerrarConexionMetadatos(): " + e.getMessage());
-        }
-    }
-
-    /**
-     * Abre un socket nuevo en el canal de DATOS (puerto 8001).
-     *
-     * Intermitente: existe solo durante la transferencia de bytes.
-     * El servidor tiene un ServerSocket.accept() esperando cada vez
-     * que se abre este canal.
-     *
-     * @return Socket abierto, o null si falló la conexión.
-     */
-    private static Socket abrirCanalDatos() {
-        try {
-            Socket s = new Socket(SERVER_IP, PUERTO_DATOS);
-            System.out.println("[INFO] Canal de datos abierto.");
-            return s;
-        } catch (IOException e) {
-            System.out.println("[ERROR] abrirCanalDatos(): " + e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Cierra el canal de datos al terminar cada transferencia.
-     *
-     * @param s Socket a cerrar.
-     */
-    private static void cerrarCanalDatos(Socket s) {
-        try {
-            if (s != null && !s.isClosed()) {
-                s.close();
-                System.out.println("[INFO] Canal de datos cerrado.");
-            }
-        } catch (IOException e) {
-            System.out.println("[ERROR] cerrarCanalDatos(): " + e.getMessage());
-        }
-    }
-
-
-    // =================================================================
-    //  MENÚ DE CONSOLA
-    //  [GUI] TODO este bloque se elimina por completo al agregar la GUI.
-    //        Cada opción del menú se convierte en un botón o acción
-    //        en la ventana principal (ver guía al inicio del archivo).
-    // =================================================================
-
-    private static void mostrarMenu() {
-        System.out.println("\n----------------------------------------------");
-        System.out.println("  MENÚ  |  Carpeta local: " + carpetaLocal);
-        System.out.println("----------------------------------------------");
-        System.out.println("  1.  Listar carpeta LOCAL");
-        System.out.println("  2.  Listar carpeta REMOTA");
-        System.out.println("  3.  Subir archivo");
-        System.out.println("  4.  Descargar archivo");
-        System.out.println("  5.  Subir carpeta");
-        System.out.println("  6.  Descargar carpeta");
-        System.out.println("  7.  Borrar archivo LOCAL");
-        System.out.println("  8.  Borrar archivo REMOTO");
-        System.out.println("  9.  Renombrar archivo LOCAL");
-        System.out.println("  10. Renombrar archivo REMOTO");
-        System.out.println("  11. Renombrar carpeta LOCAL");
-        System.out.println("  12. Renombrar carpeta REMOTA");
-        System.out.println("  13. Salir");
-        System.out.println("----------------------------------------------");
-        System.out.print("  Opción: ");
-    }
-
-    // [GUI] Eliminar — el valor viene del botón presionado.
-    private static int leerOpcion() {
-        try { return Integer.parseInt(teclado.nextLine().trim()); }
-        catch (NumberFormatException e) { return -1; }
-    }
-
-    /**
-     * Lee una cadena desde consola.
-     *
-     * [GUI] Reemplazar según el caso:
-     *   · Nombre de archivo  → JTextField o JFileChooser
-     *   · Nombre de carpeta  → JFileChooser.setFileSelectionMode(DIRECTORIES_ONLY)
-     *   · Nuevo nombre       → JOptionPane.showInputDialog(frame, "Nuevo nombre:")
-     */
-    private static String pedirTexto(String mensaje) {
-        System.out.print("  " + mensaje + ": ");
-        return teclado.nextLine().trim();
-    }
-
-
-    // =================================================================
     //  OPCIÓN 1 — LISTAR CARPETA LOCAL  (sin red)
     // =================================================================
 
     /**
-     * Lista archivos y subdirectorios de la carpeta local.
+     * Devuelve los archivos y subdirectorios de la carpeta local.
      * Operación 100 % local — no usa la red en ningún momento.
      *
-     * [GUI] Poblar el JTable del panel izquierdo con el arreglo File[].
-     *       Llamar automáticamente al arrancar y después de cualquier
+     * [GUI] Llamar para poblar el JTable del panel izquierdo.
+     *       Invocar automáticamente al arrancar y después de cualquier
      *       operación local (borrar, renombrar, descargar).
      *       Columnas sugeridas: Nombre | Tipo | Tamaño | Fecha de modificación.
+     *
+     * @return Array de File con el contenido de carpetaLocal,
+     *         o array vacío si la carpeta está vacía o no existe.
      */
-    private static void mostrarContenidoLocal() {
-        System.out.println("\n[LOCAL] " + carpetaLocal);
+    public static File[] listarLocal() {
         File[] items = new File(carpetaLocal).listFiles();
-
-        if (items == null || items.length == 0) {
-            System.out.println("  (vacío)");
-            return;
-        }
-        for (File f : items) {
-            System.out.printf("  %s  %-40s  %,d bytes%n",
-                    f.isDirectory() ? "[DIR ]" : "[FILE]",
-                    f.getName(),
-                    f.length());
-        }
+        return items != null ? items : new File[0];
     }
 
 
@@ -517,7 +418,23 @@ public class Cliente {
     // =================================================================
 
     /**
-     * Pide al servidor su lista de archivos y la imprime.
+     * Modelo de dato para un ítem de la lista remota.
+     * [GUI] Usar para construir las filas del JTable del panel derecho.
+     */
+    public static class ItemRemoto {
+        public final String tipo;    // "FILE" o "DIR"
+        public final String nombre;
+        public final long   tamanio;
+
+        public ItemRemoto(String tipo, String nombre, long tamanio) {
+            this.tipo    = tipo;
+            this.nombre  = nombre;
+            this.tamanio = tamanio;
+        }
+    }
+
+    /**
+     * Pide al servidor su lista de archivos y la devuelve como lista.
      *
      * Protocolo:
      *   C→S: {"cmd":"LIST"}
@@ -526,19 +443,14 @@ public class Cliente {
      *        ... (una línea por entrada)
      *        {"status":"FIN_LIST"}
      *
-     * ¿Por qué enviar ítems uno a uno en vez de un array JSON?
-     *   El servidor puede hacer streaming de los ítems conforme los
-     *   lee del disco sin construir todo el array en memoria.
-     *   Para carpetas con miles de archivos esto es mucho más eficiente.
+     * [GUI] Llamar para poblar el JTable del panel derecho.
+     *       Ejecutar en SwingWorker si la carpeta remota puede ser grande.
      *
-     * [GUI] Poblar el JTable del panel derecho con cada ITEM recibido.
-     *       Llamar al botón "Actualizar" del panel derecho.
-     *       Columnas sugeridas: Nombre | Tipo | Tamaño.
+     * @return Lista de ItemRemoto, vacía si hay error o no hay archivos.
      */
-    private static void mostrarContenidoRemoto() {
+    public static List<ItemRemoto> listarRemoto() {
+        List<ItemRemoto> lista = new ArrayList<>();
         try {
-            System.out.println("\n[REMOTO] Solicitando lista...");
-
             JsonObject cmd = new JsonObject();
             cmd.addProperty("cmd", "LIST");
             enviarJson(cmd);
@@ -548,16 +460,17 @@ public class Cliente {
                 String status = resp.get("status").getAsString();
                 if (status.equals("FIN_LIST")) break;
                 if (status.equals("ITEM")) {
-                    System.out.printf("  %s  %-40s  %,d bytes%n",
-                            resp.get("tipo").getAsString().equals("DIR") ? "[DIR ]" : "[FILE]",
+                    lista.add(new ItemRemoto(
+                            resp.get("tipo").getAsString(),
                             resp.get("nombre").getAsString(),
-                            resp.get("tamanio").getAsLong());
+                            resp.get("tamanio").getAsLong()
+                    ));
                 }
             }
-
         } catch (IOException e) {
-            System.out.println("[ERROR] mostrarContenidoRemoto(): " + e.getMessage());
+            // [GUI] Mostrar mensaje de error de red
         }
+        return lista;
     }
 
 
@@ -580,26 +493,18 @@ public class Cliente {
      *   Fase 3 — confirmación:
      *     S→C: {"status":"UPLOAD_OK"}
      *
-     * ¿Por qué dos fases (negociación + datos)?
-     *   Permite al servidor rechazar antes de abrir el canal de datos
-     *   (disco lleno, nombre inválido, permisos, etc.). Así no se
-     *   desperdicia una conexión TCP extra.
-     *
-     * [GUI] · El nombre viene de un JFileChooser (no de un JTextField).
-     *       · Mostrar el JFileChooser con currentDirectory = carpetaLocal.
+     * [GUI] · nombre viene de un JFileChooser con currentDirectory = carpetaLocal.
      *       · Ejecutar en SwingWorker para no bloquear la interfaz.
      *       · Actualizar barra de progreso en los puntos [GUI-PROGRESO].
      *       · Al terminar (done()), refrescar la lista remota.
+     *
+     * @param nombre Nombre del archivo dentro de carpetaLocal a enviar.
+     * @return true si el archivo fue subido correctamente.
      */
-    private static void subirArchivo() {
-        // [GUI] nombre = jFileChooser.getSelectedFile().getName()
-        String nombre  = pedirTexto("Nombre del archivo a subir");
-        File   archivo = new File(carpetaLocal, nombre);
+    public static boolean subirArchivo(String nombre) {
+        File archivo = new File(carpetaLocal, nombre);
 
-        if (!archivo.exists() || !archivo.isFile()) {
-            System.out.println("[AVISO] Archivo no encontrado: " + nombre);
-            return;
-        }
+        if (!archivo.exists() || !archivo.isFile()) return false;
 
         long tamanio = archivo.length();
 
@@ -612,14 +517,11 @@ public class Cliente {
             enviarJson(cmd);
 
             JsonObject resp = leerRespuesta();
-            if (!esExito(resp)) {
-                System.out.println("[ERROR] Servidor: " + resp.get("msg").getAsString());
-                return;
-            }
+            if (!esExito(resp)) return false;
 
             // --- Fase 2: transferencia ---
             Socket canalDatos = abrirCanalDatos();
-            if (canalDatos == null) return;
+            if (canalDatos == null) return false;
 
             try (FileInputStream fis = new FileInputStream(archivo);
                  OutputStream    os  = canalDatos.getOutputStream()) {
@@ -634,7 +536,6 @@ public class Cliente {
                     // [GUI-PROGRESO] publish( (int)(totalEnviado * 100 / tamanio) );
                 }
                 os.flush();
-                System.out.println("[INFO] Enviados: " + totalEnviado + " bytes");
 
             } finally {
                 cerrarCanalDatos(canalDatos);
@@ -642,14 +543,11 @@ public class Cliente {
 
             // --- Fase 3: confirmación ---
             JsonObject conf = leerRespuesta();
-            if (conf != null && conf.get("status").getAsString().equals("UPLOAD_OK")) {
-                System.out.println("[OK] '" + nombre + "' subido correctamente.");
-            } else {
-                System.out.println("[ERROR] Confirmación inesperada: " + conf);
-            }
+            return conf != null && conf.get("status").getAsString().equals("UPLOAD_OK");
 
         } catch (IOException e) {
-            System.out.println("[ERROR] subirArchivo(): " + e.getMessage());
+            // [GUI] Mostrar mensaje de error
+            return false;
         }
     }
 
@@ -673,22 +571,15 @@ public class Cliente {
      *   Fase 3 — notificación al servidor:
      *     C→S: {"cmd":"DOWNLOAD_OK"}
      *
-     * ¿Por qué leer EXACTAMENTE tamanio bytes y no hasta EOF?
-     *   TCP es un flujo continuo: el socket no sabe dónde termina
-     *   un archivo y empieza el siguiente mensaje. Si se lee hasta
-     *   EOF hay que cerrar el socket para señalar el fin, pero
-     *   entonces ya no sirve para el siguiente archivo. Leyendo
-     *   exactamente tamanio bytes el canal queda libre para reutilizar.
-     *
      * [GUI] · nombre viene de la fila seleccionada en el JTable remoto.
      *       · Ejecutar en SwingWorker.
      *       · Actualizar barra de progreso en [GUI-PROGRESO].
      *       · Al terminar (done()), refrescar la lista local.
+     *
+     * @param nombre Nombre del archivo remoto a descargar.
+     * @return true si la descarga fue exitosa.
      */
-    private static void descargarArchivo() {
-        // [GUI] nombre = (String) tablaRemota.getValueAt(filaSeleccionada, colNombre)
-        String nombre = pedirTexto("Nombre del archivo a descargar");
-
+    public static boolean descargarArchivo(String nombre) {
         try {
             // --- Fase 1: solicitar ---
             JsonObject cmd = new JsonObject();
@@ -697,17 +588,13 @@ public class Cliente {
             enviarJson(cmd);
 
             JsonObject resp = leerRespuesta();
-            if (!esExito(resp)) {
-                System.out.println("[ERROR] " + resp.get("msg").getAsString());
-                return;
-            }
+            if (!esExito(resp)) return false;
 
             long tamanio = resp.get("tamanio").getAsLong();
-            System.out.println("[INFO] El servidor enviará " + tamanio + " bytes");
 
             // --- Fase 2: recibir bytes ---
             Socket canalDatos = abrirCanalDatos();
-            if (canalDatos == null) return;
+            if (canalDatos == null) return false;
 
             File destino = new File(carpetaLocal, nombre);
 
@@ -737,10 +624,11 @@ public class Cliente {
             ok.addProperty("cmd", "DOWNLOAD_OK");
             enviarJson(ok);
 
-            System.out.println("[OK] Guardado en: " + destino.getAbsolutePath());
+            return true;
 
         } catch (IOException e) {
-            System.out.println("[ERROR] descargarArchivo(): " + e.getMessage());
+            // [GUI] Mostrar mensaje de error
+            return false;
         }
     }
 
@@ -758,23 +646,17 @@ public class Cliente {
      *   S→C: {"status":"OK"}
      *   [llama a enviarArchivoConCanal() por cada archivo]
      *
-     * Se envía la cantidad primero para que el servidor sepa exactamente
-     * cuántos archivos esperar sin necesitar un token de fin de carpeta.
-     *
      * [GUI] · JFileChooser en modo DIRECTORIES_ONLY.
      *       · Ejecutar en SwingWorker.
      *       · Al terminar (done()), refrescar la lista remota.
+     *
+     * @param nombre Nombre de la subcarpeta dentro de carpetaLocal a enviar.
+     * @return true si todos los archivos fueron enviados correctamente.
      */
-    private static void subirCarpeta() {
-        // [GUI] jFileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY)
-        //       nombre = jFileChooser.getSelectedFile().getName()
-        String nombre  = pedirTexto("Nombre de la carpeta a subir");
-        File   carpeta = new File(carpetaLocal, nombre);
+    public static boolean subirCarpeta(String nombre) {
+        File carpeta = new File(carpetaLocal, nombre);
 
-        if (!carpeta.exists() || !carpeta.isDirectory()) {
-            System.out.println("[AVISO] Carpeta no encontrada: " + nombre);
-            return;
-        }
+        if (!carpeta.exists() || !carpeta.isDirectory()) return false;
 
         File[] todos = carpeta.listFiles();
         List<File> archivos = new ArrayList<>();
@@ -790,21 +672,16 @@ public class Cliente {
             enviarJson(cmd);
 
             JsonObject resp = leerRespuesta();
-            if (!esExito(resp)) {
-                System.out.println("[ERROR] Servidor: " + resp);
-                return;
-            }
+            if (!esExito(resp)) return false;
 
-            for (File archivo : archivos) {
-                System.out.println("[INFO] Enviando: " + archivo.getName());
+            for (File archivo : archivos)
                 enviarArchivoConCanal(nombre + "/" + archivo.getName(), archivo);
-            }
 
-            System.out.println("[OK] Carpeta '" + nombre + "' subida ("
-                    + archivos.size() + " archivo(s)).");
+            return true;
 
         } catch (IOException e) {
-            System.out.println("[ERROR] subirCarpeta(): " + e.getMessage());
+            // [GUI] Mostrar mensaje de error
+            return false;
         }
     }
 
@@ -825,21 +702,14 @@ public class Cliente {
      *     [cliente abre canal de datos y recibe tamanio bytes]
      *     C→S: {"cmd":"NEXT_OK"}
      *
-     * ¿Por qué NEXT_OK después de cada archivo?
-     *   El servidor necesita saber que el cliente terminó antes de
-     *   enviar los metadatos del siguiente archivo. Sin este ACK,
-     *   el servidor podría enviar el JSON del próximo archivo mientras
-     *   el cliente todavía está leyendo bytes del canal de datos,
-     *   mezclando los dos flujos.
-     *
      * [GUI] · nombre viene de la fila seleccionada en el JTable remoto.
      *       · Ejecutar en SwingWorker.
      *       · Al terminar (done()), refrescar la lista local.
+     *
+     * @param nombre Nombre de la carpeta remota a descargar.
+     * @return true si la carpeta fue descargada correctamente.
      */
-    private static void descargarCarpeta() {
-        // [GUI] nombre = (String) tablaRemota.getValueAt(filaSeleccionada, colNombre)
-        String nombre = pedirTexto("Nombre de la carpeta a descargar");
-
+    public static boolean descargarCarpeta(String nombre) {
         try {
             JsonObject cmd = new JsonObject();
             cmd.addProperty("cmd",    "DOWNLOAD_DIR");
@@ -847,27 +717,20 @@ public class Cliente {
             enviarJson(cmd);
 
             JsonObject resp = leerRespuesta();
-            if (!esExito(resp)) {
-                System.out.println("[ERROR] " + resp.get("msg").getAsString());
-                return;
-            }
+            if (!esExito(resp)) return false;
 
             int cantidad = resp.get("cantidad").getAsInt();
-            System.out.println("[INFO] El servidor enviará " + cantidad + " archivo(s).");
 
             File carpetaDest = new File(carpetaLocal, nombre);
             carpetaDest.mkdirs();
 
             for (int i = 0; i < cantidad; i++) {
-                JsonObject meta      = leerRespuesta();
+                JsonObject meta       = leerRespuesta();
                 String     nombreArch = meta.get("nombre").getAsString();
-                long       tamanio   = meta.get("tamanio").getAsLong();
-
-                System.out.println("[INFO] Recibiendo: " + nombreArch
-                        + "  (" + tamanio + " bytes)");
+                long       tamanio    = meta.get("tamanio").getAsLong();
 
                 Socket canalDatos = abrirCanalDatos();
-                if (canalDatos == null) break;
+                if (canalDatos == null) return false;
 
                 recibirArchivoConCanal(canalDatos, new File(carpetaDest, nombreArch), tamanio);
                 cerrarCanalDatos(canalDatos);
@@ -877,10 +740,11 @@ public class Cliente {
                 enviarJson(ack);
             }
 
-            System.out.println("[OK] Carpeta descargada en: " + carpetaDest.getAbsolutePath());
+            return true;
 
         } catch (IOException e) {
-            System.out.println("[ERROR] descargarCarpeta(): " + e.getMessage());
+            // [GUI] Mostrar mensaje de error
+            return false;
         }
     }
 
@@ -894,21 +758,15 @@ public class Cliente {
      * Operación 100 % local, no usa la red.
      *
      * [GUI] · nombre viene de la fila seleccionada en el JTable local.
-     *       · Mostrar JOptionPane.showConfirmDialog antes de borrar.
-     *       · Al terminar, refrescar la lista local.
+     *       · Mostrar JOptionPane.showConfirmDialog antes de llamar.
+     *       · Refrescar la lista local al terminar.
+     *
+     * @param nombre Nombre del archivo a eliminar dentro de carpetaLocal.
+     * @return true si fue eliminado correctamente.
      */
-    private static void borrarArchivoLocal() {
-        // [GUI] nombre = (String) tablaLocal.getValueAt(filaSeleccionada, colNombre)
-        String nombre  = pedirTexto("Nombre del archivo local a borrar");
-        File   archivo = new File(carpetaLocal, nombre);
-
-        if (!archivo.exists() || !archivo.isFile()) {
-            System.out.println("[AVISO] No encontrado: " + nombre);
-            return;
-        }
-        System.out.println(archivo.delete()
-                ? "[OK] '" + nombre + "' eliminado localmente."
-                : "[ERROR] No se pudo eliminar (¿en uso?).");
+    public static boolean borrarArchivoLocal(String nombre) {
+        File archivo = new File(carpetaLocal, nombre);
+        return archivo.exists() && archivo.isFile() && archivo.delete();
     }
 
     /**
@@ -917,47 +775,33 @@ public class Cliente {
      *
      * [GUI] · Abrir un JOptionPane.showInputDialog con el nombre actual
      *         pre-cargado para que el usuario solo edite lo que cambia.
-     *       · Al terminar, refrescar la lista local.
+     *       · Refrescar la lista local al terminar.
+     *
+     * @param actual Nombre actual del archivo.
+     * @param nuevo  Nuevo nombre.
+     * @return true si fue renombrado correctamente.
      */
-    private static void renombrarArchivoLocal() {
-        // [GUI] actual = fila seleccionada; nuevo = JOptionPane.showInputDialog(...)
-        String actual = pedirTexto("Nombre actual del archivo local");
-        String nuevo  = pedirTexto("Nuevo nombre");
-
+    public static boolean renombrarArchivoLocal(String actual, String nuevo) {
         File origen = new File(carpetaLocal, actual);
         File dest   = new File(carpetaLocal, nuevo);
-
-        if (!origen.exists() || !origen.isFile()) {
-            System.out.println("[AVISO] No encontrado: " + actual);
-            return;
-        }
-        System.out.println(origen.renameTo(dest)
-                ? "[OK] '" + actual + "' → '" + nuevo + "'"
-                : "[ERROR] No se pudo renombrar.");
+        return origen.exists() && origen.isFile() && origen.renameTo(dest);
     }
 
     /**
      * Renombra una carpeta en la carpeta local.
      * Operación 100 % local, no usa la red.
      *
-     * [GUI] Igual que renombrarArchivoLocal pero la fila seleccionada
-     *       debe ser de tipo DIR. Refrescar la lista local al terminar.
+     * [GUI] · La fila seleccionada debe ser de tipo DIR.
+     *       · Refrescar la lista local al terminar.
+     *
+     * @param actual Nombre actual de la carpeta.
+     * @param nuevo  Nuevo nombre.
+     * @return true si fue renombrada correctamente.
      */
-    private static void renombrarCarpetaLocal() {
-        // [GUI] actual = fila seleccionada (tipo DIR); nuevo = JOptionPane.showInputDialog(...)
-        String actual = pedirTexto("Nombre actual de la carpeta local");
-        String nuevo  = pedirTexto("Nuevo nombre");
-
+    public static boolean renombrarCarpetaLocal(String actual, String nuevo) {
         File origen = new File(carpetaLocal, actual);
         File dest   = new File(carpetaLocal, nuevo);
-
-        if (!origen.exists() || !origen.isDirectory()) {
-            System.out.println("[AVISO] No encontrado: " + actual);
-            return;
-        }
-        System.out.println(origen.renameTo(dest)
-                ? "[OK] Carpeta '" + actual + "' → '" + nuevo + "'"
-                : "[ERROR] No se pudo renombrar.");
+        return origen.exists() && origen.isDirectory() && origen.renameTo(dest);
     }
 
 
@@ -974,13 +818,13 @@ public class Cliente {
      *        o {"status":"ERROR","msg":"..."}
      *
      * [GUI] · nombre viene de la fila seleccionada en el JTable remoto.
-     *       · Mostrar JOptionPane.showConfirmDialog antes de enviar.
-     *       · Al terminar, refrescar la lista remota.
+     *       · Mostrar JOptionPane.showConfirmDialog antes de llamar.
+     *       · Refrescar la lista remota al terminar.
+     *
+     * @param nombre Nombre del archivo remoto a eliminar.
+     * @return true si fue eliminado correctamente.
      */
-    private static void borrarArchivoRemoto() {
-        // [GUI] nombre = (String) tablaRemota.getValueAt(filaSeleccionada, colNombre)
-        String nombre = pedirTexto("Nombre del archivo remoto a borrar");
-
+    public static boolean borrarArchivoRemoto(String nombre) {
         try {
             JsonObject cmd = new JsonObject();
             cmd.addProperty("cmd",    "DELETE");
@@ -988,12 +832,11 @@ public class Cliente {
             enviarJson(cmd);
 
             JsonObject resp = leerRespuesta();
-            System.out.println(
-                    resp != null && resp.get("status").getAsString().equals("DELETE_OK")
-                            ? "[OK] '" + nombre + "' eliminado del servidor."
-                            : "[ERROR] " + resp);
+            return resp != null && resp.get("status").getAsString().equals("DELETE_OK");
+
         } catch (IOException e) {
-            System.out.println("[ERROR] borrarArchivoRemoto(): " + e.getMessage());
+            // [GUI] Mostrar mensaje de error
+            return false;
         }
     }
 
@@ -1007,13 +850,13 @@ public class Cliente {
      *
      * [GUI] · actual = fila seleccionada en el JTable remoto.
      *       · nuevo  = JOptionPane.showInputDialog con actual pre-cargado.
-     *       · Al terminar, refrescar la lista remota.
+     *       · Refrescar la lista remota al terminar.
+     *
+     * @param actual Nombre actual del archivo remoto.
+     * @param nuevo  Nuevo nombre.
+     * @return true si fue renombrado correctamente.
      */
-    private static void renombrarArchivoRemoto() {
-        // [GUI] actual = fila seleccionada; nuevo = JOptionPane.showInputDialog(...)
-        String actual = pedirTexto("Nombre actual del archivo remoto");
-        String nuevo  = pedirTexto("Nuevo nombre");
-
+    public static boolean renombrarArchivoRemoto(String actual, String nuevo) {
         try {
             JsonObject cmd = new JsonObject();
             cmd.addProperty("cmd",    "RENAME_FILE");
@@ -1022,11 +865,11 @@ public class Cliente {
             enviarJson(cmd);
 
             JsonObject resp = leerRespuesta();
-            System.out.println(esExito(resp)
-                    ? "[OK] '" + actual + "' → '" + nuevo + "'"
-                    : "[ERROR] " + resp.get("msg").getAsString());
+            return esExito(resp);
+
         } catch (IOException e) {
-            System.out.println("[ERROR] renombrarArchivoRemoto(): " + e.getMessage());
+            // [GUI] Mostrar mensaje de error
+            return false;
         }
     }
 
@@ -1040,13 +883,13 @@ public class Cliente {
      *
      * [GUI] · actual = fila seleccionada (tipo DIR) en el JTable remoto.
      *       · nuevo  = JOptionPane.showInputDialog con actual pre-cargado.
-     *       · Al terminar, refrescar la lista remota.
+     *       · Refrescar la lista remota al terminar.
+     *
+     * @param actual Nombre actual de la carpeta remota.
+     * @param nuevo  Nuevo nombre.
+     * @return true si fue renombrada correctamente.
      */
-    private static void renombrarCarpetaRemota() {
-        // [GUI] actual = fila seleccionada (tipo DIR); nuevo = JOptionPane.showInputDialog(...)
-        String actual = pedirTexto("Nombre actual de la carpeta remota");
-        String nuevo  = pedirTexto("Nuevo nombre");
-
+    public static boolean renombrarCarpetaRemota(String actual, String nuevo) {
         try {
             JsonObject cmd = new JsonObject();
             cmd.addProperty("cmd",    "RENAME_DIR");
@@ -1055,17 +898,17 @@ public class Cliente {
             enviarJson(cmd);
 
             JsonObject resp = leerRespuesta();
-            System.out.println(esExito(resp)
-                    ? "[OK] Carpeta '" + actual + "' → '" + nuevo + "'"
-                    : "[ERROR] " + resp.get("msg").getAsString());
+            return esExito(resp);
+
         } catch (IOException e) {
-            System.out.println("[ERROR] renombrarCarpetaRemota(): " + e.getMessage());
+            // [GUI] Mostrar mensaje de error
+            return false;
         }
     }
 
 
     // =================================================================
-    //  OPCIÓN 13 — SALIR
+    //  SALIR
     // =================================================================
 
     /**
@@ -1076,21 +919,18 @@ public class Cliente {
      *   (el servidor cierra la conexión por su lado sin responder)
      *
      * [GUI] Llamar desde windowClosing() del JFrame o desde el botón
-     *       "Cerrar sesión". Después llamar dispose() en el JFrame.
-     *
-     * @return false — detiene el bucle del menú de consola.
+     *       "Cerrar sesión". Después llamar dispose() en el JFrame y
+     *       luego cerrarConexionMetadatos().
      */
-    private static boolean salir() {
+    public static void salir() {
         JsonObject cmd = new JsonObject();
         cmd.addProperty("cmd", "EXIT");
         enviarJson(cmd);
-        System.out.println("[INFO] Enviando EXIT al servidor...");
-        return false;
     }
 
 
     // =================================================================
-    //  MÉTODOS AUXILIARES DE TRANSFERENCIA
+    //  MÉTODOS AUXILIARES DE TRANSFERENCIA  (internos)
     // =================================================================
 
     /**
@@ -1103,9 +943,7 @@ public class Cliente {
      *   [canal de datos: bytes crudos]
      *   S→C: {"status":"FILE_OK"}
      *
-     * @param nombreRelativo Ruta relativa en el servidor, incluye carpeta padre
-     *                       ("fotos/imagen.jpg"). El servidor usa esto para saber
-     *                       en qué subdirectorio guardar el archivo.
+     * @param nombreRelativo Ruta relativa en el servidor, incluye carpeta padre.
      * @param archivo        Archivo local a enviar.
      */
     private static void enviarArchivoConCanal(String nombreRelativo, File archivo) {
@@ -1117,10 +955,7 @@ public class Cliente {
             enviarJson(cmd);
 
             JsonObject resp = leerRespuesta();
-            if (!esExito(resp)) {
-                System.out.println("[ERROR] Servidor no listo para: " + nombreRelativo);
-                return;
-            }
+            if (!esExito(resp)) return;
 
             Socket canalDatos = abrirCanalDatos();
             if (canalDatos == null) return;
@@ -1137,21 +972,16 @@ public class Cliente {
                 cerrarCanalDatos(canalDatos);
             }
 
-            JsonObject conf = leerRespuesta();
-            if (conf == null || !conf.get("status").getAsString().equals("FILE_OK"))
-                System.out.println("[AVISO] Respuesta inesperada: " + conf);
+            leerRespuesta(); // consume FILE_OK
 
         } catch (IOException e) {
-            System.out.println("[ERROR] enviarArchivoConCanal(): " + e.getMessage());
+            // [GUI] Mostrar mensaje de error si se desea
         }
     }
 
     /**
      * Recibe exactamente 'tamanio' bytes del canal de datos y los escribe
      * en el archivo destino. Usado por descargarCarpeta() para cada archivo.
-     *
-     * Ver descargarArchivo() para la explicación de por qué se lee
-     * exactamente tamanio bytes y no hasta EOF.
      *
      * @param canalDatos Socket del canal de datos, ya conectado.
      * @param destino    Archivo local donde se guardarán los bytes.
@@ -1176,7 +1006,7 @@ public class Cliente {
             bos.flush();
 
         } catch (IOException e) {
-            System.out.println("[ERROR] recibirArchivoConCanal(): " + e.getMessage());
+            // [GUI] Mostrar mensaje de error si se desea
         }
     }
 
@@ -1186,19 +1016,11 @@ public class Cliente {
     // =================================================================
 
     /**
-     * Crea la carpeta local si no existe. Se llama una sola vez al arrancar.
-     *
-     * [GUI] En la primera ejecución mostrar un JFileChooser preguntando
-     *       dónde quiere el usuario su carpeta local y guardar la ruta
-     *       elegida en carpetaLocal antes de llamar a este método.
+     * Crea la carpeta local si no existe. Se llama al arrancar y al
+     * cambiar carpetaLocal vía setCarpetaLocal().
      */
     private static void crearCarpetaLocalSiNoExiste() {
         File dir = new File(carpetaLocal);
-        if (!dir.exists()) {
-            dir.mkdirs();
-            System.out.println("[INFO] Carpeta local creada: " + carpetaLocal);
-        } else {
-            System.out.println("[INFO] Carpeta local: " + carpetaLocal);
-        }
+        if (!dir.exists()) dir.mkdirs();
     }
 }
