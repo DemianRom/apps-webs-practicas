@@ -1,0 +1,308 @@
+UNIDAD DE APRENDIZAJE : Aplicaciones para comunicaciones en red
+UNIDAD TEMÁTICA I: Sockets de flujo
+No. Y Título de la práctica:
+Tiempo de realización: 3 horas
+Práctica no. 1 Servicio de transferencia de archivos
+Objetivo de la práctica: El estudiante implementará
+una aplicación para el envío de múltiples archivos a
+través de la red haciendo uso de sockets de flujo
+Situación problemática: En muchas organizaciones se requiere transferir grandes volúmenes de archivos a través de la red
+(archivos de audio, video, fotografías, archivos ejecutables, etc.) de una manera confiable, es decir, garantizar la entrega de los datos,
+que estos lleguen en orden y sin duplicados.
+¿Qué tipo de socket permite garantizar la entrega de datos cubriendo todas las necesidades anteriormente descritas?
+
+Competencia específica: Desarrolla aplicaciones en red, con base en el modelo cliente-servidor y utilizando únicamente la
+interfaz de sockets de flujo bloqueantes, para el envío de datos.
+
+Competencias genéricas:
+·
+·
+·
+·
+
+Aplica los conocimientos en la práctica
+Demuestra habilidad para trabajar en equipo
+Demuestra capacidad de investigación
+Desarrolla aplicaciones en red con base en la
+tecnología más adecuada
+
+Elementos de competencia:
+·
+
+·
+·
+·
+
+Programa aplicaciones en red con base en el modelo
+Cliente-Servidor y la interfaz de aplicaciones de
+sockets de flujo
+Analiza los servicios definidos en la capa de transporte
+Emplea el modelo Cliente-Servidor para construir
+aplicaciones en red
+Programa aplicaciones Cliente-Servidor utilizando
+sockets de flujo bloqueantes
+
+Criterios de evaluación: Las prácticas 1, 2 y 3 aportarán el 30% de la unidad temática I
+
+Rúbrica (analítica) para la U.A. Aplicaciones para comunicaciones en red.
+Producto: Servicio de transferencia de archivos
+Valoración: Novato (0-150pts), Intermedio (151-300 pts), Avanzado (301-450 pts), Experto (451-600 pts)
+ASPECTOS A EVALUAR
+
+Excelente (100pts)
+
+Cumplió bien (75pts)
+
+Cumplió (50pts)
+
+No satisfactorio(25pts)
+
+Utiliza algunos de los
+elementos de programación
+en red
+
+No tiene idea de cómo
+resolver el problema, ni que
+tipo de comunicación
+necesita implementar
+
+Análisis
+
+Entiende el problema a
+resolver, haciendo uso de los
+elementos de programación
+en red precisos
+
+Utiliza los elementos de
+programación en red
+necesarios
+
+Diseño
+
+Define una arquitectura de
+comunicación en base al tipo
+de comunicación a utilizar
+
+Define una arquitectura de
+Define una arquitectura de
+comunicación que puede o no comunicación que no se
+ser la mejor opción para el
+ajusta al tipo de
+tipo de comunicación a
+comunicación
+utilizar
+
+No define ninguna
+arquitectura
+
+Implementación
+
+Utiliza los elementos
+solicitados(sockets de flujo,
+flujos orientados a byte) y
+desarrolla la aplicación de
+acuerdo a los requerimientos
+
+Utiliza alguno(s) de los
+elementos solicitados y
+desarrolla la aplicación de
+acuerdo a los requerimientos
+
+Utiliza alguno(s) de los
+elementos solicitados, pero
+no desarrolla la aplicación de
+acuerdo a los requerimientos
+
+No utiliza ninguno de los
+elementos y no desarrolla la
+aplicación en base a los
+requerimientos
+
+Conocimientos
+
+Muestra dominio de los
+elementos (sockets de flujo
+bloqueantes, flujos
+orientados a byte, archivos)
+
+Muestra dominio de los
+elementos, así como de
+programación
+
+Muestra dominio de algunos
+de los elementos
+
+No muestra dominio de los
+elementos, ni de
+programación, ni de diseño
+de interfaces
+
+Presentación
+
+Dominio de los temas,
+explicación de algoritmos
+usados utilizados, caso de
+prueba bien diseñado
+
+Explicación de algoritmos
+utilizados
+
+Supo darse a entender al
+explicar algunos de los
+algoritmos
+
+No supo darse a entender, se
+confundió
+
+Trabajo colaborativo
+
+Desde el desarrollo del
+
+Desde el desarrollo del
+
+Desde el desarrollo del
+
+proyecto se denotó el
+
+proyecto se denotó el
+
+proyecto se denotó el
+
+trabajo en grupo, la
+
+trabajo en grupo, existen
+
+trabajo en grupo, la
+
+empatía, buena
+
+algunos roces de
+
+empatía, buena
+
+Desorganización, falta de
+interés, el trabajo no se
+repartió equitativamente,
+huecos de ignorancia en el
+desarrollo del proyecto
+
+distribución de tareas,
+
+opiniones y
+
+distribución de tareas,
+
+colaboración de todos.
+
+malentendidos ,
+
+colaboración de todos.
+
+Todos saben sobre el
+
+colaboración de todos.
+
+proyecto en su totalidad.
+
+Todos saben sobre el
+tema en su totalidad.
+
+Introducción
+
+El envío de archivos a través de la red es una característica importante para la gran mayoría de las
+aplicaciones que hoy día se utilizan (blogs, redes sociales, mensajería instantánea, Declaración de
+impuestos, educación en línea, etc.), sin embargo, no todas las aplicaciones disponibles permiten el envío
+de archivos de gran tamaño (p.e. El correo electrónico no permite enviar archivos de más de 10 o 20 MB).
+Esto hace necesario el desarrollo de aplicaciones que permitan transferir archivos sin importar el tamaño de
+éstos.
+
+Recursos y/o materiales
+·
+·
+·
+
+Manual de prácticas de laboratorio de
+Aplicaciones para Comunicaciones en Red
+Plumones
+Bibliografía
+
+Instrucciones
+
+·
+·
+·
+·
+
+Internet
+Computadora
+IDE de desarrollo
+Apuntes
+
+En esta práctica debes implementar un servicio de transferencia de archivos (estilo google drive o one-drive) para que el
+cliente de la aplicación pueda enviar/recibir archivos/carpetas de cualquier tamaño/tipo, desde su carpeta local (en el
+sistema de archivos del cliente) y hacia su carpeta remota (en el sistema de archivos del servidor). Además, deberás dar
+al usuario la posibilidad de borrar o renombrar o copiar archivos/carpetas local o remotamente.
+
+Desarrollo de la práctica
+
+A partir de los programas vistos en clase que te serán proporcionados por el profesor deberás realizar las siguientes
+modificaciones:
+·
+En la aplicación servidor se deberán crear dos sockets de flujo (servidores) en puertos definidos por el usuario
+(ej Puerto servidor1-metadatos = 8000, Puerto servidor 2-contenido_archivos = 8001). En el primer servidor se
+tendrá la conexión para el envío de metainformación relacionada con la operación realizada por el usuario y
+deberá estar abierta durante toda la ejecución de la aplicación. La segunda conexión será intermitente, solo se
+usará cuando se transmita el contenido de archivos o carpetas (c->s, o s->c ).
+·
+En la aplicación servidor también se deberá asociar una ruta a la que será la carpeta remota del usuario y en
+ella podrán existir archivos, así como subcarpetas.
+·
+En la aplicación cliente también se crearán dos conexiones hacia el servidor (una para la metainformación y
+otra para el contenido de los archivos).
+·
+En la aplicación servidor también se deberá asociar una ruta a la que será la carpeta local del usuario y en ella
+podrán existir archivos, así como subcarpetas.
+·
+Al ejecutar la aplicación cliente se mostrará un menú de usuario con las siguientes opciones:
+1. Mostrar contenido de la carpeta local
+2. Mostrar contenido de la carpeta remota
+3. Subir archivos a la carpeta remota
+4. Descargar archivos de la carpeta remota
+5. Subir carpetas a la carpeta remota
+6. Descargar carpetas desde la carpeta remota
+7. Borrar archivos de la carpeta local
+8. Borrar archivos de la carpeta remota
+9. Renombrar archivos en la carpeta local
+10. Renombrar archivos en la carpeta remota
+11. Renombrar carpetas en la carpeta local
+12. Renombrar carpetas en la carpeta remota
+13. Salir
+·
+Una vez realizada la operación elegida por el usuario se volverá a mostrar el menú por si se desea realizar una
+nueva operación.
+·
+
+Realiza pruebas intentando enviar distintos tipos de archivo (imágenes, texto, ejecutables), así mismo intenta
+enviar archivos de distintos tamaños (menos de 100KB, más de 100KB y menos de 10MB, más de 10MB y
+menos de 200MB, más de 200MB y hasta 2GB) y carpetas.
+
+Cierre de la práctica
+Preguntas:
+1.
+
+¿Qué tipo de archivos se enviaron más rápido?
+
+2.
+3.
+4.
+
+¿Cuál fue el número máximo de archivos que fue posible enviar a la vez?
+¿Cuál fue el tamaño de archivo más grande que se pudo transferir?¿por qué?
+¿Qué es el orden de red?
+5. ¿Por qué razón es importante utilizar el orden de red al enviar los datos a través de un socket?
+
+6. Si deseáramos enviar archivos de tamaño muy grande, ¿qué cambios sería necesario hacer
+con respecto a los tipos de datos usados para medir el tamaño de los archivos, así como
+para leer bloques de datos del archivo?
+
+
