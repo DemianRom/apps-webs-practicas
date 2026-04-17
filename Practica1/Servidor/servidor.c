@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <pthread.h>
+
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
@@ -18,7 +18,7 @@
 #define DIR_ARCHIVOS "servidor_archivos"
 
 // Function prototypes
-void *handle_client(void *arg);
+void handle_client(int client_socket, int data_server_fd);
 void process_command(int client_socket, int data_server_fd, const char *json_str, FILE *stream);
 void send_json(int socket, cJSON *json);
 void send_error(int socket, const char *msg);
@@ -95,35 +95,20 @@ int main() {
 
         printf("Nuevo cliente conectado (Metadatos)\n");
 
-        pthread_t thread_id;
-        int *new_socks = malloc(2 * sizeof(int));
-        new_socks[0] = client_fd;
-        new_socks[1] = data_server_fd;
-
-        if (pthread_create(&thread_id, NULL, handle_client, (void *)new_socks) != 0) {
-            perror("could not create thread");
-            free(new_socks);
-            close(client_fd);
-        } else {
-            pthread_detach(thread_id);
-        }
+        handle_client(client_fd, data_server_fd);
     }
 
     return 0;
 }
 
-void *handle_client(void *arg) {
-    int *socks = (int *)arg;
-    int client_socket = socks[0];
-    int data_server_fd = socks[1];
-    free(arg);
+void handle_client(int client_socket, int data_server_fd) {
 
     char buffer[BUFFER_SIZE];
     FILE *stream = fdopen(dup(client_socket), "r");
     if (!stream) {
         perror("fdopen fallback");
         close(client_socket);
-        return NULL;
+        return;
     }
 
     while (fgets(buffer, BUFFER_SIZE, stream) != NULL) {
@@ -140,7 +125,6 @@ void *handle_client(void *arg) {
     fclose(stream);
     close(client_socket);
     printf("Cliente desconectado.\n");
-    return NULL;
 }
 
 void process_command(int client_socket, int data_server_fd, const char *json_str, FILE *stream) {

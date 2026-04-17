@@ -1,0 +1,19 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< org.example:redes2-repo-practicas >------------------
+[INFO] Building redes2-repo-practicas 1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.6.3:java (default-cli) @ redes2-repo-practicas ---
+Conectado
+hola.txt - 0
+test.txt - 6
+Sears_Zemansky_LIBRO-signed.pdf - 0
+Fí_sica Universitaria Volumen 1 - Francis Sears, Mark Zemansky.pdf - 66547245
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.444 s
+[INFO] Finished at: 2026-04-17T09:38:50-06:00
+[INFO] ------------------------------------------------------------------------

@@ -21,7 +21,7 @@ public class ClienteGUI extends JFrame {
     private JProgressBar progressBar;
     
     public ClienteGUI() {
-        super("Cliente de Transferencia de Archivos (Retro Edition)");
+        super("Cliente de Transferencia de Archivos");
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         setSize(900, 600);
         setLocationRelativeTo(null);
@@ -86,10 +86,6 @@ public class ClienteGUI extends JFrame {
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, 
                 new JScrollPane(tablaLocal), new JScrollPane(tablaRemota));
         splitPane.setResizeWeight(0.5);
-        
-        JPanel pnlListas = new JPanel(new GridLayout(1,2));
-        pnlListas.add(new JScrollPane(tablaLocal));
-        pnlListas.add(new JScrollPane(tablaRemota));
         
         JPanel pnlSplit = new JPanel(new BorderLayout());
         JLabel lblLoc = new JLabel("Archivos Locales (" + Cliente.getCarpetaLocal() + ")", SwingConstants.CENTER);
@@ -159,7 +155,8 @@ public class ClienteGUI extends JFrame {
                     }
                     return true;
                 } catch (Exception ex) {
-                    ex.printStackTrace();
+                    // Cierto límite de Linux en Java 21+ con Wayland / filemanagers. 
+                    // No colapsa la app, así que lo ignoramos de forma segura.
                     return false;
                 }
             }
@@ -240,12 +237,7 @@ public class ClienteGUI extends JFrame {
         jfc.setFileSelectionMode(JFileChooser.FILES_ONLY);
         if (jfc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             File f = jfc.getSelectedFile();
-            // Asegurar que esté en la carpeta local
-            if(!f.getParentFile().getAbsolutePath().equals(new File(Cliente.getCarpetaLocal()).getAbsolutePath())){
-                JOptionPane.showMessageDialog(this, "Debe seleccionar un archivo directamente dentro de la carpeta local definida.\nPuede usar Arrastrar y Soltar si el archivo está en otro lugar.");
-                return;
-            }
-            accionSubirArchivoWorker(f.getName());
+            subirArchivoDrop(f);
         }
     }
 
@@ -281,11 +273,7 @@ public class ClienteGUI extends JFrame {
         jfc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         if (jfc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             File f = jfc.getSelectedFile();
-            if(!f.getParentFile().getAbsolutePath().equals(new File(Cliente.getCarpetaLocal()).getAbsolutePath())){
-                JOptionPane.showMessageDialog(this, "Debe seleccionar una carpeta directamente dentro de la carpeta local definida.");
-                return;
-            }
-            accionSubirCarpetaWorker(f.getName());
+            subirArchivoDrop(f);
         }
     }
 
@@ -485,9 +473,9 @@ public class ClienteGUI extends JFrame {
             }
         });
 
-        // Configurar el LookAndFeel Retro
+        // Configurar el LookAndFeel a uno moderno (Nimbus / estilo XP-Vista)
         try {
-            UIManager.setLookAndFeel("com.sun.java.swing.plaf.motif.MotifLookAndFeel");
+            UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
             SwingUtilities.updateComponentTreeUI(dialog);
         } catch (Exception ex) {
             ex.printStackTrace();
