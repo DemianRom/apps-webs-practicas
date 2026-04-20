@@ -305,6 +305,7 @@ public class Cliente {
 
         } catch (IOException e) {
             // [GUI] Mostrar JOptionPane.showMessageDialog con e.getMessage()
+            e.printStackTrace();
             return false;
         }
     }
@@ -839,6 +840,7 @@ public class Cliente {
             return false;
         }
     }
+    
 
     /**
      * Pide al servidor que renombre un archivo remoto.
