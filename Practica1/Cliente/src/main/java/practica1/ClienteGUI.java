@@ -46,6 +46,9 @@ public class ClienteGUI extends JFrame {
 
         JButton btnSubirArchivo = new JButton("Subir Archivo");
         JButton btnSubirCarpeta = new JButton("Subir Carpeta");
+        JButton btnEnviarServidor = new JButton("Enviar al Servidor");
+        JButton btnCrearCarpetaLocal = new JButton("Crear Carpeta Local");
+        JButton btnCrearCarpetaRemoto = new JButton("Crear Carpeta Remota");
         JButton btnBajarArchivo = new JButton("Descargar");
         JButton btnBorrarLocal = new JButton("Borrar Local");
         JButton btnBorrarRemoto = new JButton("Borrar Remoto");
@@ -55,6 +58,9 @@ public class ClienteGUI extends JFrame {
 
         toolBar.add(btnSubirArchivo);
         toolBar.add(btnSubirCarpeta);
+        toolBar.add(btnEnviarServidor);
+        toolBar.add(btnCrearCarpetaLocal);
+        toolBar.add(btnCrearCarpetaRemoto);
         toolBar.addSeparator();
         toolBar.add(btnBajarArchivo);
         toolBar.addSeparator();
@@ -116,6 +122,9 @@ public class ClienteGUI extends JFrame {
         
         btnSubirArchivo.addActionListener(e -> accionSubirArchivo());
         btnSubirCarpeta.addActionListener(e -> accionSubirCarpeta());
+        btnEnviarServidor.addActionListener(e -> accionEnviarAlServidor());
+        btnCrearCarpetaLocal.addActionListener(e -> accionCrearCarpetaLocal());
+        btnCrearCarpetaRemoto.addActionListener(e -> accionCrearCarpetaRemoto());
         btnBajarArchivo.addActionListener(e -> accionDescargar());
         
         btnBorrarLocal.addActionListener(e -> accionBorrarLocal());
@@ -135,6 +144,51 @@ public class ClienteGUI extends JFrame {
                 if(me.getClickCount() == 2) accionRenombrarRemoto();
             }
         });
+    }
+
+    // --- CREAR CARPETA LOCAL ---
+    private void accionCrearCarpetaLocal() {
+        String nombre = JOptionPane.showInputDialog(this, "Nombre de la carpeta local:");
+        if (nombre == null || nombre.trim().isEmpty()) return;
+        boolean ok = Cliente.crearCarpetaLocal(nombre.trim());
+        if (ok) {
+            lblEstado.setText(" Carpeta local creada.");
+            refrescarLocal();
+        } else {
+            JOptionPane.showMessageDialog(this, "No se pudo crear la carpeta local (ya existe o permiso denegado).", "Error", JOptionPane.ERROR_MESSAGE);
+            lblEstado.setText(" Error al crear carpeta local.");
+        }
+    }
+
+    // --- CREAR CARPETA REMOTA ---
+    private void accionCrearCarpetaRemoto() {
+        String nombre = JOptionPane.showInputDialog(this, "Nombre de la carpeta remota:");
+        if (nombre == null || nombre.trim().isEmpty()) return;
+
+        lblEstado.setText(" Creando carpeta remota...");
+        progressBar.setIndeterminate(true);
+        progressBar.setVisible(true);
+
+        new SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() {
+                return Cliente.crearCarpetaRemota(nombre.trim());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    boolean ok = get();
+                    lblEstado.setText(ok ? " Carpeta remota creada." : " Error al crear carpeta remota.");
+                    refrescarRemoto();
+                } catch (Exception e) {
+                    lblEstado.setText(" Error al crear carpeta remota.");
+                } finally {
+                    progressBar.setVisible(false);
+                    progressBar.setIndeterminate(false);
+                }
+            }
+        }.execute();
     }
 
     private void configurarDragAndDrop() {
@@ -178,11 +232,55 @@ public class ClienteGUI extends JFrame {
             refrescarLocal();
         }
         
+        // No subir automáticamente al servidor: solo copiar a carpeta local.
         if (origen.isDirectory()) {
-            accionSubirCarpetaWorker(destino.getName());
+            // Copió la carpeta localmente; refrescar para mostrarla.
+            refrescarLocal();
         } else {
-            accionSubirArchivoWorker(destino.getName());
+            refrescarLocal();
         }
+    }
+
+    /**
+     * Envia al servidor el archivo o carpeta seleccionada en la lista local.
+     */
+    private void accionEnviarAlServidor() {
+        int row = tablaLocal.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccione un elemento local para enviar al servidor.");
+            return;
+        }
+        String nombre = (String) modeloLocal.getValueAt(row, 0);
+        String tipo = (String) modeloLocal.getValueAt(row, 1);
+
+        lblEstado.setText(" Enviando al servidor: " + nombre + " ...");
+        progressBar.setIndeterminate(true);
+        progressBar.setVisible(true);
+
+        new SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() {
+                if ("DIR".equals(tipo)) {
+                    return Cliente.subirCarpeta(nombre);
+                } else {
+                    return Cliente.subirArchivo(nombre);
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    boolean ok = get();
+                    lblEstado.setText(ok ? " Envío al servidor exitoso." : " Error al enviar al servidor.");
+                    refrescarRemoto();
+                } catch (Exception e) {
+                    lblEstado.setText(" Error al enviar al servidor.");
+                } finally {
+                    progressBar.setVisible(false);
+                    progressBar.setIndeterminate(false);
+                }
+            }
+        }.execute();
     }
 
     public void refrescarListas() {

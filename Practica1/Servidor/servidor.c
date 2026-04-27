@@ -17,10 +17,95 @@
 #define BUFFER_SIZE 4096
 #define DIR_ARCHIVOS "servidor_archivos"
 
-// Function prototypes
+/*
+ * =====================================================================
+ *  Servidor de Transferencia de Archivos (C)
+ *  ---------------------------------------------------------------
+ *  Arquitectura: DOS CANALES (METADATOS + DATOS)
+ *
+ *  - Canal de metadatos: puerto 8000 (constante PORT_META)
+ *    · Permanente por cliente: se hace accept() y se lee línea a línea
+ *      (JSON por línea, delimitado por '\n').
+ *    · Aquí se procesan comandos JSON como LIST, UPLOAD, DOWNLOAD, etc.
+ *
+ *  - Canal de datos: puerto 8001 (constante PORT_DATA)
+ *    · Intermitente: el servidor escucha y hace accept() cada vez
+ *      que necesita transferir bytes crudos (tanto para subir como
+ *      para descargar). Transporta exactamente N bytes, no texto.
+ *
+ *  Contrato JSON (resumen):
+ *    - Cliente -> Servidor: siempre envía primero un objeto JSON
+ *      en una sola línea y espera una respuesta (protocolo pregunta-respuesta).
+ *    - Mensajes de ejemplo:
+ *        {"cmd":"LIST"}
+ *        {"cmd":"UPLOAD","nombre":"foo.txt","tamanio":12345}
+ *        {"cmd":"DOWNLOAD","nombre":"bar.bin"}
+ *        {"cmd":"UPLOAD_DIR","nombre":"fotos","cantidad":3}
+ *        {"cmd":"FILE","nombre":"fotos/img.jpg","tamanio":81920}
+ *        {"cmd":"EXIT"}
+ *    - Respuestas (servidor -> cliente):
+ *        {"status":"OK"}
+ *        {"status":"ITEM","tipo":"FILE|DIR","nombre":"x","tamanio":N}
+ *        {"status":"FIN_LIST"}
+ *        {"status":"ERROR","msg":"..."}
+ *        {"status":"UPLOAD_OK"}
+ *        {"status":"NEXT","nombre":"x","tamanio":N}
+ *
+ *  Implementación (alto nivel):
+ *    - main(): crea sockets de metadatos y datos, hace listen() en ambos.
+ *    - Bucle principal: accept() en socket de metadatos; por cada cliente
+ *      se llama a handle_client(client_fd, data_server_fd).
+ *    - handle_client(): envuelve el socket en FILE* con fdopen(dup()) y
+ *      lee líneas con fgets(). Por cada línea invoca process_command().
+ *    - process_command(): parsea el JSON y ejecuta la operación correspondiente.
+ *      Para transferencias de bytes hace accept() en el socket de datos y
+ *      realiza recv()/send() para leer o escribir exactamente el número
+ *      de bytes indicado por el cliente.
+ *
+ *  Recomendaciones importantes:
+ *    - Validar/sanear el campo "nombre" para evitar path traversal.
+ *    - Evitar bloqueos prolongados: agregar timeouts y límites de tamaño.
+ *    - Para concurrencia, crear hilos (pthread_create) o procesos por cliente.
+ *
+ * =====================================================================
+ */
+
+// prototipos
+/*
+ * handle_client
+ * ----------------
+ * Atiende la conexión de metadatos de un cliente. Lee líneas (JSON
+ * terminadas en '\n') desde el socket, y llama a process_command
+ * para cada mensaje. El parámetro data_server_fd es el descriptor del
+ * socket de escucha del canal de datos (PORT_DATA) y se pasa a
+ * process_command para que éste haga accept() cuando necesite la
+ * transferencia de bytes.
+ */
 void handle_client(int client_socket, int data_server_fd);
+
+/*
+ * process_command
+ * -----------------
+ * Procesa una línea JSON recibida por el canal de metadatos. El
+ * parámetro 'stream' es el FILE* derivado del socket de metadatos
+ * (usado en algunos flujos para leer acknowledgements cuando aplica).
+ */
 void process_command(int client_socket, int data_server_fd, const char *json_str, FILE *stream);
+
+/*
+ * send_json
+ * ---------
+ * Envía el objeto cJSON serializado seguido de '\n' para que el
+ * cliente Java (BufferedReader.readLine()) pueda parsear por línea.
+ */
 void send_json(int socket, cJSON *json);
+
+/*
+ * send_error / send_ok
+ * ---------------------
+ * Utilidades para enviar respuestas estándar de error u OK en
+ * formato JSON por el canal de metadatos.
+ */
 void send_error(int socket, const char *msg);
 void send_ok(int socket);
 
@@ -30,13 +115,13 @@ int main() {
     int opt = 1;
     socklen_t addrlen = sizeof(address);
 
-    // Create directory if it doesn't exist
+    // Crear direcorio para archivos si no existe
     struct stat st = {0};
     if (stat(DIR_ARCHIVOS, &st) == -1) {
         mkdir(DIR_ARCHIVOS, 0700);
     }
 
-    // Creating socket file descriptor for Metadata
+    // Crear socket file descriptor para Metadatos
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("socket meta failed");
         exit(EXIT_FAILURE);
@@ -59,7 +144,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
     
-    // Creating socket file descriptor for Data
+    // Crear socket file descriptor para Datos
     int data_server_fd;
     if ((data_server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("socket data failed");
@@ -112,7 +197,6 @@ void handle_client(int client_socket, int data_server_fd) {
     }
 
     while (fgets(buffer, BUFFER_SIZE, stream) != NULL) {
-        // Strip newline
         buffer[strcspn(buffer, "\n")] = 0;
         buffer[strcspn(buffer, "\r")] = 0;
 
@@ -189,10 +273,10 @@ void process_command(int client_socket, int data_server_fd, const char *json_str
             const char *nombre = nombre_item->valuestring;
             long tamanio = (long)tamanio_item->valuedouble;
             
-            // Send OK
+            // env OK
             send_ok(client_socket);
             
-            // Wait for data socket connection
+            // WEsperar conexion de datos
             struct sockaddr_in data_addr;
             socklen_t data_addrlen = sizeof(data_addr);
             int data_client = accept(data_server_fd, (struct sockaddr *)&data_addr, &data_addrlen);
@@ -269,11 +353,9 @@ void process_command(int client_socket, int data_server_fd, const char *json_str
             send_error(client_socket, "Falta parametro nombre");
         }
     } else if (strcmp(cmd, "DOWNLOAD_OK") == 0) {
-        // Just an acknowledgement from the client
         printf("Descarga confirmada por el cliente.\n");
     } else if (strcmp(cmd, "EXIT") == 0) {
-        // Client wants to exit
-        // Not much to do, connection will drop
+
     } else if (strcmp(cmd, "DELETE") == 0) {
         cJSON *nombre_item = cJSON_GetObjectItemCaseSensitive(json, "nombre");
         if (cJSON_IsString(nombre_item)) {
@@ -405,7 +487,7 @@ void send_json(int socket, cJSON *json) {
     
     // printf("Enviando: %s\n", string);
     
-    // Add newline for Java readLine()
+    // AAgregar salto de linea para que el cliente sepa que es el final del mensaje
     size_t len = strlen(string);
     char *to_send = malloc(len + 2);
     strcpy(to_send, string);

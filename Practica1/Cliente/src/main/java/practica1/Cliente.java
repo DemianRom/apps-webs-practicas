@@ -1023,4 +1023,35 @@ public class Cliente {
         File dir = new File(carpetaLocal);
         if (!dir.exists()) dir.mkdirs();
     }
+
+    /**
+     * Crea una carpeta dentro de la carpeta local.
+     * @param nombre Nombre de la carpeta a crear (relativo a carpetaLocal).
+     * @return true si la carpeta fue creada correctamente.
+     */
+    public static boolean crearCarpetaLocal(String nombre) {
+        File dir = new File(carpetaLocal, nombre);
+        if (dir.exists()) return false;
+        return dir.mkdirs();
+    }
+
+    /**
+     * Pide al servidor que cree una carpeta remota.
+     * Envía el comando UPLOAD_DIR y espera la respuesta.
+     * @param nombre Nombre de la carpeta remota a crear.
+     * @return true si el servidor respondió OK.
+     */
+    public static boolean crearCarpetaRemota(String nombre) {
+        try {
+            JsonObject cmd = new JsonObject();
+            cmd.addProperty("cmd", "UPLOAD_DIR");
+            cmd.addProperty("nombre", nombre);
+            enviarJson(cmd);
+
+            JsonObject resp = leerRespuesta();
+            return esExito(resp);
+        } catch (IOException e) {
+            return false;
+        }
+    }
 }
