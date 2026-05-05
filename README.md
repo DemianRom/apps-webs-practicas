@@ -16,6 +16,7 @@ Este repositorio pertenece al grupo **6CM3**, impartido por el profesor **Axel E
 |---|---|---|---|---|
 | 1 | `Practica1/` | Servicio de transferencia de archivos con sockets de flujo | Java, C, TCP, JSON | Finalizada |
 | 2 | `Practica2/` | Reproductor de musica con sockets de datagrama | Python, UDP, ventana deslizante | Finalizada |
+| 3 | `Practica3/` | Streaming MP3 con hilos, tuberia y metadatos | Python, UDP, ventana deslizante, threads | En desarrollo |
 
 ## Organizacion general
 
@@ -29,6 +30,12 @@ redes2-repo-practicas/
 |   +-- docs/
 |   +-- README.md
 +-- Practica2/
+|   +-- cliente.py
+|   +-- servidor.py
+|   +-- gui.py
+|   +-- protocol.py
+|   +-- README.md
++-- Practica3/
 |   +-- cliente.py
 |   +-- servidor.py
 |   +-- gui.py

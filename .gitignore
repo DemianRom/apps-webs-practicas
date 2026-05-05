@@ -28,9 +28,13 @@ Practica1/servidor_archivos/*
 Practica1/Servidor/servidor_archivos/*
 Practica2/canciones/*.wav
 Practica2/descargadas/*
+Practica3/canciones/*.mp3
+Practica3/descargadas/*
 
 # Keep folder placeholders
 !Practica1/servidor_archivos/.gitkeep
 !Practica1/Servidor/servidor_archivos/.gitkeep
 !Practica2/canciones/.gitkeep
 !Practica2/descargadas/.gitkeep
+!Practica3/canciones/.gitkeep
+!Practica3/descargadas/.gitkeep
