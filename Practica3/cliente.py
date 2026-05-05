@@ -1,4 +1,4 @@
-import os
+import ctypes
 import queue
 import socket
 import threading
@@ -177,13 +177,22 @@ class PipeMp3Player:
         self.playback_dir = Path(playback_dir)
         self.stop_requested = threading.Event()
         self.playback_file = None
-        self.started_external_player = False
+        self.started_internal_player = False
+        self.engine = MciMp3Engine()
+        self.current_pipe = None
 
     def stop(self):
         self.stop_requested.set()
+        if self.current_pipe:
+            self.current_pipe.close()
+        self.engine.stop()
+        self.engine.close()
 
     def play_from_pipe(self, audio_pipe, filename, status=None):
         self.stop_requested.clear()
+        self.engine.close()
+        self.started_internal_player = False
+        self.current_pipe = audio_pipe
         self.playback_dir.mkdir(exist_ok=True)
         self.playback_file = self.playback_dir / f"stream_{filename}"
         bytes_available = 0
@@ -200,23 +209,68 @@ class PipeMp3Player:
                 if status:
                     status("Hilo de reproduccion leyendo tuberia", bytes_available)
 
-                if not self.started_external_player and bytes_available >= PIPE_START_BYTES:
-                    self.open_external_player()
-                    self.started_external_player = True
+                if not self.started_internal_player and bytes_available >= PIPE_START_BYTES:
+                    self.started_internal_player = self.start_internal_player(status)
 
-        if not self.started_external_player and bytes_available > 0:
-            self.open_external_player()
-            self.started_external_player = True
+        if not self.started_internal_player and bytes_available > 0:
+            self.started_internal_player = self.start_internal_player(status)
 
         if status:
-            status("Reproduccion alimentada por tuberia finalizada", bytes_available)
+            status("Tuberia consumida; reproductor interno activo", bytes_available)
+        self.current_pipe = None
 
-    def open_external_player(self):
-        if self.playback_file and self.playback_file.exists():
-            try:
-                os.startfile(str(self.playback_file))
-            except OSError:
-                pass
+    def start_internal_player(self, status=None):
+        if not self.playback_file or not self.playback_file.exists():
+            return False
+
+        ok, message = self.engine.play_file(self.playback_file)
+        if status:
+            if ok:
+                status("Reproductor interno MCI reproduciendo MP3", self.playback_file.stat().st_size)
+            else:
+                status(f"Esperando buffer reproducible: {message}", self.playback_file.stat().st_size)
+        return ok
+
+
+class MciMp3Engine:
+    """Reproductor MP3 interno en Windows usando MCI, sin abrir apps externas."""
+
+    def __init__(self):
+        self.winmm = ctypes.WinDLL("winmm")
+        self.alias = "practica3_mp3"
+        self.opened = False
+
+    def _send(self, command):
+        buffer = ctypes.create_unicode_buffer(512)
+        code = self.winmm.mciSendStringW(command, buffer, len(buffer), None)
+        if code:
+            error_buffer = ctypes.create_unicode_buffer(512)
+            self.winmm.mciGetErrorStringW(code, error_buffer, len(error_buffer))
+            return False, error_buffer.value or f"Codigo MCI {code}"
+        return True, buffer.value
+
+    def play_file(self, path):
+        self.close()
+        path = Path(path).resolve()
+        ok, message = self._send(f'open "{path}" type mpegvideo alias {self.alias}')
+        if not ok:
+            return False, message
+
+        self.opened = True
+        ok, message = self._send(f"play {self.alias}")
+        if not ok:
+            self.close()
+            return False, message
+        return True, "Reproduciendo"
+
+    def stop(self):
+        if self.opened:
+            self._send(f"stop {self.alias}")
+
+    def close(self):
+        if self.opened:
+            self._send(f"close {self.alias}")
+            self.opened = False
 
 
 def main():

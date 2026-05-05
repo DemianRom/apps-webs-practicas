@@ -28,25 +28,26 @@ class MusicPlayerGUI(tk.Tk):
         self.load_songs()
 
     def setup_styles(self):
-        self.bg = "#f6f7fb"
+        self.bg = "#f4f0f7"
         self.panel = "#ffffff"
-        self.text = "#242833"
-        self.muted = "#657085"
-        self.blue = "#2457c5"
-        self.green = "#16835d"
-        self.orange = "#b35b00"
+        self.text = "#2f2b32"
+        self.muted = "#6f6873"
+        self.blue = "#6f3f86"
+        self.green = "#178566"
+        self.orange = "#bf6b19"
 
         self.configure(bg=self.bg)
         style = ttk.Style(self)
         style.theme_use("clam")
         style.configure("TFrame", background=self.bg)
-        style.configure("Panel.TLabelframe", background=self.bg, bordercolor="#ccd3df")
+        style.configure("Panel.TLabelframe", background=self.bg, bordercolor="#d6cfda")
         style.configure("Panel.TLabelframe.Label", background=self.bg, foreground=self.text, font=("Segoe UI", 11, "bold"))
         style.configure("TLabel", background=self.bg, foreground=self.text)
-        style.configure("Title.TLabel", background=self.bg, foreground=self.text, font=("Segoe UI", 21, "bold"))
+        style.configure("Title.TLabel", background=self.bg, foreground=self.text, font=("Segoe UI", 22, "bold"))
         style.configure("Subtitle.TLabel", background=self.bg, foreground=self.muted, font=("Segoe UI", 10))
         style.configure("Action.TButton", foreground=self.blue, font=("Segoe UI", 10, "bold"), padding=(12, 9))
-        style.configure("Horizontal.TProgressbar", troughcolor="#e6eaf2", background=self.blue)
+        style.configure("Hero.TLabel", background=self.bg, foreground=self.blue, font=("Segoe UI", 10, "bold"))
+        style.configure("Horizontal.TProgressbar", troughcolor="#ece7ee", background=self.blue)
 
     def build_ui(self):
         root = ttk.Frame(self, padding=12)
@@ -55,9 +56,10 @@ class MusicPlayerGUI(tk.Tk):
         ttk.Label(root, text="Practica 3: streaming MP3 con UDP, hilos y tuberia", style="Title.TLabel").pack(anchor="w")
         ttk.Label(
             root,
-            text="La transferencia UDP y la reproduccion se ejecutan en hilos separados; una tuberia con buffer grande comunica ambos hilos.",
+            text="Reproductor interno: no abre Windows Media Player. La transferencia UDP y la reproduccion viven en hilos separados unidos por una tuberia.",
             style="Subtitle.TLabel",
         ).pack(anchor="w", pady=(0, 12))
+        ttk.Label(root, text="UDP + ACK acumulado | Pipe con buffer grande | Metadatos ID3 | Reproduccion interna MCI", style="Hero.TLabel").pack(anchor="w", pady=(0, 12))
 
         main = ttk.Frame(root)
         main.pack(fill="both", expand=True)
@@ -90,8 +92,8 @@ class MusicPlayerGUI(tk.Tk):
         side.grid(row=0, column=1, sticky="nsew")
 
         self.refresh_button = ttk.Button(side, text="Cargar lista", style="Action.TButton", command=self.load_songs)
-        self.stream_button = ttk.Button(side, text="Iniciar transferencia + reproduccion", style="Action.TButton", command=self.stream_selected, state="disabled")
-        self.stop_button = ttk.Button(side, text="Detener reproduccion", style="Action.TButton", command=self.stop_playback, state="disabled")
+        self.stream_button = ttk.Button(side, text="Reproducir en la app", style="Action.TButton", command=self.stream_selected, state="disabled")
+        self.stop_button = ttk.Button(side, text="Detener audio interno", style="Action.TButton", command=self.stop_playback, state="disabled")
         self.refresh_button.pack(fill="x", pady=(0, 8))
         self.stream_button.pack(fill="x", pady=(0, 8))
         self.stop_button.pack(fill="x", pady=(0, 18))
@@ -109,7 +111,7 @@ class MusicPlayerGUI(tk.Tk):
         bottom.columnconfigure(2, weight=1)
 
         self.transfer_state = self.status_card(bottom, 0, "Hilo de transferencia", "Esperando")
-        self.playback_state = self.status_card(bottom, 1, "Hilo de reproduccion", "Esperando")
+        self.playback_state = self.status_card(bottom, 1, "Hilo de reproduccion interna", "Esperando")
         self.pipe_state = self.status_card(bottom, 2, "Tuberia / buffer", "0 chunks")
 
         progress_frame = ttk.LabelFrame(root, text="Progreso UDP con ventana deslizante", style="Panel.TLabelframe", padding=10)
@@ -190,8 +192,8 @@ class MusicPlayerGUI(tk.Tk):
         self.playback_state.config(text="Esperando datos en tuberia")
         self.pipe_state.config(text="0 chunks / 0 bytes")
         self.set_busy(True)
-        self.log("Iniciando dos hilos: transferencia y reproduccion.")
-        self.log("La tuberia comunica el flujo ordenado recibido hacia el reproductor.")
+        self.log("Iniciando dos hilos: transferencia y reproduccion interna.")
+        self.log("La tuberia comunica el flujo ordenado recibido hacia el reproductor MCI embebido.")
 
         def progress(received, total):
             self.events.put(("progress", (received, total)))
