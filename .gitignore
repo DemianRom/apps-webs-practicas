@@ -1,0 +1,36 @@
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+
+# Java / Maven
+target/
+*.class
+
+# C build artifacts
+*.o
+*.out
+*.exe
+Practica1/Servidor/servidor
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs and generated outputs
+*.log
+maven_output.txt
+
+# Practice runtime data
+Practica1/servidor_archivos/*
+Practica1/Servidor/servidor_archivos/*
+Practica2/canciones/*.wav
+Practica2/descargadas/*
+
+# Keep folder placeholders
+!Practica1/servidor_archivos/.gitkeep
+!Practica1/Servidor/servidor_archivos/.gitkeep
+!Practica2/canciones/.gitkeep
+!Practica2/descargadas/.gitkeep
