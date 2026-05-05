@@ -188,6 +188,19 @@ class PipeMp3Player:
         self.engine.stop()
         self.engine.close()
 
+    def pause(self):
+        return self.engine.pause()
+
+    def resume(self):
+        return self.engine.resume()
+
+    def stop_audio(self):
+        self.stop_requested.set()
+        if self.current_pipe:
+            self.current_pipe.close()
+        self.engine.stop()
+        self.engine.close()
+
     def play_from_pipe(self, audio_pipe, filename, status=None):
         self.stop_requested.clear()
         self.engine.close()
@@ -216,7 +229,12 @@ class PipeMp3Player:
             self.started_internal_player = self.start_internal_player(status)
 
         if status:
-            status("Tuberia consumida; reproductor interno activo", bytes_available)
+            if self.stop_requested.is_set():
+                status("Audio interno detenido; tuberia cerrada", bytes_available)
+            elif self.started_internal_player:
+                status("Tuberia consumida; reproductor interno activo", bytes_available)
+            else:
+                status("Tuberia consumida; audio listo en archivo", bytes_available)
         self.current_pipe = None
 
     def start_internal_player(self, status=None):
@@ -239,6 +257,7 @@ class MciMp3Engine:
         self.winmm = ctypes.WinDLL("winmm")
         self.alias = "practica3_mp3"
         self.opened = False
+        self.paused_position = 0
 
     def _send(self, command):
         buffer = ctypes.create_unicode_buffer(512)
@@ -257,6 +276,8 @@ class MciMp3Engine:
             return False, message
 
         self.opened = True
+        self.paused_position = 0
+        self._send(f"set {self.alias} time format milliseconds")
         ok, message = self._send(f"play {self.alias}")
         if not ok:
             self.close()
@@ -267,10 +288,36 @@ class MciMp3Engine:
         if self.opened:
             self._send(f"stop {self.alias}")
 
+    def pause(self):
+        if not self.opened:
+            return False, "No hay audio activo"
+        ok, position = self.position()
+        if ok:
+            self.paused_position = position
+        ok, message = self._send(f"stop {self.alias}")
+        if not ok:
+            return False, message
+        return True, f"Pausado en {self.paused_position} ms"
+
+    def resume(self):
+        if not self.opened:
+            return False, "No hay audio activo"
+        return self._send(f"play {self.alias} from {self.paused_position}")
+
+    def position(self):
+        ok, value = self._send(f"status {self.alias} position")
+        if not ok:
+            return False, 0
+        try:
+            return True, int(value.strip() or "0")
+        except ValueError:
+            return True, 0
+
     def close(self):
         if self.opened:
             self._send(f"close {self.alias}")
             self.opened = False
+            self.paused_position = 0
 
 
 def main():

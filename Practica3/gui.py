@@ -21,6 +21,8 @@ class MusicPlayerGUI(tk.Tk):
         self.current_result = None
         self.transfer_thread = None
         self.playback_thread = None
+        self.audio_active = False
+        self.audio_paused = False
 
         self.setup_styles()
         self.build_ui()
@@ -92,10 +94,14 @@ class MusicPlayerGUI(tk.Tk):
         side.grid(row=0, column=1, sticky="nsew")
 
         self.refresh_button = ttk.Button(side, text="Cargar lista", style="Action.TButton", command=self.load_songs)
-        self.stream_button = ttk.Button(side, text="Reproducir en la app", style="Action.TButton", command=self.stream_selected, state="disabled")
-        self.stop_button = ttk.Button(side, text="Detener audio interno", style="Action.TButton", command=self.stop_playback, state="disabled")
+        self.stream_button = ttk.Button(side, text="Iniciar streaming UDP", style="Action.TButton", command=self.stream_selected, state="disabled")
+        self.pause_button = ttk.Button(side, text="Pausar audio", style="Action.TButton", command=self.pause_audio, state="disabled")
+        self.resume_button = ttk.Button(side, text="Reanudar audio", style="Action.TButton", command=self.resume_audio, state="disabled")
+        self.stop_button = ttk.Button(side, text="Detener audio interno", style="Action.TButton", command=self.stop_audio, state="disabled")
         self.refresh_button.pack(fill="x", pady=(0, 8))
         self.stream_button.pack(fill="x", pady=(0, 8))
+        self.pause_button.pack(fill="x", pady=(0, 8))
+        self.resume_button.pack(fill="x", pady=(0, 8))
         self.stop_button.pack(fill="x", pady=(0, 18))
 
         self.meta_title = self.info(side, "Titulo", "Sin seleccion")
@@ -147,7 +153,12 @@ class MusicPlayerGUI(tk.Tk):
     def set_busy(self, busy):
         self.refresh_button.config(state="disabled" if busy else "normal")
         self.stream_button.config(state="disabled" if busy or not self.current_selection() else "normal")
-        self.stop_button.config(state="normal" if busy else "disabled")
+        self.update_audio_buttons()
+
+    def update_audio_buttons(self):
+        self.pause_button.config(state="normal" if self.audio_active and not self.audio_paused else "disabled")
+        self.resume_button.config(state="normal" if self.audio_active and self.audio_paused else "disabled")
+        self.stop_button.config(state="normal" if self.audio_active else "disabled")
 
     def load_songs(self):
         self.set_busy(True)
@@ -191,6 +202,9 @@ class MusicPlayerGUI(tk.Tk):
         self.transfer_state.config(text="Recibiendo paquetes UDP")
         self.playback_state.config(text="Esperando datos en tuberia")
         self.pipe_state.config(text="0 chunks / 0 bytes")
+        self.audio_active = False
+        self.audio_paused = False
+        self.update_audio_buttons()
         self.set_busy(True)
         self.log("Iniciando dos hilos: transferencia y reproduccion interna.")
         self.log("La tuberia comunica el flujo ordenado recibido hacia el reproductor MCI embebido.")
@@ -213,9 +227,40 @@ class MusicPlayerGUI(tk.Tk):
         )
         self.after(300, self.watch_stream)
 
-    def stop_playback(self):
+    def pause_audio(self):
+        ok, message = self.player.pause()
+        if ok:
+            self.audio_paused = True
+            self.playback_state.config(text="Audio interno pausado")
+            self.log("Audio interno pausado.")
+        else:
+            self.log(f"No se pudo pausar: {message}")
+        self.update_audio_buttons()
+
+    def resume_audio(self):
+        ok, message = self.player.resume()
+        if ok:
+            self.audio_paused = False
+            self.playback_state.config(text="Audio interno reanudado")
+            self.log("Audio interno reanudado.")
+        else:
+            self.log(f"No se pudo reanudar: {message}")
+        self.update_audio_buttons()
+
+    def stop_audio(self):
+        self.player.stop_audio()
+        self.audio_active = False
+        self.audio_paused = False
+        self.playback_state.config(text="Audio interno detenido")
+        self.log("Audio interno detenido.")
+        self.update_audio_buttons()
+
+    def stop_stream(self):
         self.player.stop()
-        self.log("Solicitud de detener reproduccion enviada.")
+        self.audio_active = False
+        self.audio_paused = False
+        self.log("Solicitud de detener reproduccion y tuberia enviada.")
+        self.update_audio_buttons()
 
     def watch_stream(self):
         if not self.current_result:
@@ -231,11 +276,15 @@ class MusicPlayerGUI(tk.Tk):
         if result.error:
             self.transfer_state.config(text="Error")
             self.playback_state.config(text="Detenida")
+            self.audio_active = False
+            self.audio_paused = False
+            self.update_audio_buttons()
             messagebox.showerror("Error", str(result.error))
             self.log(f"Error: {result.error}")
         else:
             self.transfer_state.config(text="Descarga completa")
-            self.playback_state.config(text="Tuberia consumida")
+            if not self.audio_active:
+                self.playback_state.config(text="Tuberia consumida")
             self.progress["value"] = 100
             self.progress_label.config(text=f"Archivo guardado: {Path(result.path).name}")
             self.log(f"Descarga finalizada: {result.path}")
@@ -271,6 +320,11 @@ class MusicPlayerGUI(tk.Tk):
                 elif event == "playback":
                     status, bytes_available = payload
                     self.playback_state.config(text=f"{status}: {bytes_available} bytes")
+                    status_lower = status.lower()
+                    if "reproduciendo" in status_lower or "activo" in status_lower:
+                        self.audio_active = True
+                        self.audio_paused = False
+                        self.update_audio_buttons()
 
                 elif event == "error":
                     self.set_busy(False)
