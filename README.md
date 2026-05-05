@@ -1,6 +1,14 @@
-# Aplicaciones para Comunicaciones en Red
+# Aplicaciones para Comunicaciones en Web
 
-Repositorio de practicas de la unidad de aprendizaje **Aplicaciones para Comunicaciones en Red**.
+Repositorio de practicas de la unidad de aprendizaje **Aplicaciones para Comunicaciones en Web**, correspondiente al sexto semestre de la **Ingenieria en Sistemas Computacionales** en la **Escuela Superior de Computo (ESCOM)** del **Instituto Politecnico Nacional (IPN)**.
+
+Este repositorio pertenece al grupo **6CM3**, impartido por el profesor **Axel Ernesto Moreno Cervantes**. Lo creamos para llevar de la mejor manera el desarrollo de nuestras practicas, mantener el codigo ordenado por entregas y dejar una base de consulta que tambien pueda servir como contribucion abierta en GitHub para estudiantes que esten repasando implementaciones de aplicaciones en red.
+
+## Integrantes
+
+- Romero Bautista Demian
+- Ferreira Rodriguez Hector Said
+- Jaimes Uribe Mateo Alejandro
 
 ## Estructura
 

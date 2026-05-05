@@ -1,5 +1,9 @@
 # Practica 2 - Reproductor UDP en Python
 
+## Contexto academico
+
+Practica desarrollada para la unidad de aprendizaje **Aplicaciones para Comunicaciones en Web**, grupo **6CM3**, sexto semestre de la **Ingenieria en Sistemas Computacionales** en **ESCOM - IPN**.
+
 ## Integrantes
 
 - Romero Bautista Demian

@@ -1,5 +1,15 @@
 # Practica 1 - Servicio de transferencia de archivos
 
+## Contexto academico
+
+Practica desarrollada para la unidad de aprendizaje **Aplicaciones para Comunicaciones en Web**, grupo **6CM3**, sexto semestre de la **Ingenieria en Sistemas Computacionales** en **ESCOM - IPN**.
+
+## Integrantes
+
+- Romero Bautista Demian
+- Ferreira Rodriguez Hector Said
+- Jaimes Uribe Mateo Alejandro
+
 ## Descripcion
 
 Implementacion de un servicio cliente-servidor para transferir archivos y carpetas mediante sockets de flujo bloqueantes. El cliente esta desarrollado en Java y el servidor en C.
@@ -9,13 +19,13 @@ La practica usa dos conexiones TCP:
 - **Puerto 8000 - metadatos:** conexion permanente para comandos y respuestas JSON.
 - **Puerto 8001 - datos:** conexion intermitente para enviar o recibir bytes crudos de archivos.
 
-## Integrantes
+## Distribucion del desarrollo
 
-| Nombre | Responsabilidad |
+| Integrante | Actividad principal |
 |---|---|
-| Demian Romero Bautista | Cliente Java y protocolo de red |
-| Said Ferreira | Servidor C |
-| Mateo Alejandro Jaimes Uribe | Interfaz grafica Swing |
+| Romero Bautista Demian | Cliente Java y protocolo de red |
+| Ferreira Rodriguez Hector Said | Servidor C |
+| Jaimes Uribe Mateo Alejandro | Interfaz grafica Swing |
 
 ## Estructura
 

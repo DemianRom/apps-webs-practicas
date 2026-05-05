@@ -2,6 +2,16 @@
 
 Cliente para el servicio de transferencia de archivos de la Practica 1.
 
+## Contexto academico
+
+Este modulo forma parte de la unidad de aprendizaje **Aplicaciones para Comunicaciones en Web**, grupo **6CM3**, sexto semestre de la **Ingenieria en Sistemas Computacionales** en **ESCOM - IPN**.
+
+## Integrantes
+
+- Romero Bautista Demian
+- Ferreira Rodriguez Hector Said
+- Jaimes Uribe Mateo Alejandro
+
 ## Descripcion
 
 El cliente se conecta al servidor C mediante sockets TCP. Usa dos canales:
