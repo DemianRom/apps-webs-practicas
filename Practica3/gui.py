@@ -4,7 +4,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
-from cliente import MusicClient, PipeMp3Player
+from cliente import AudioPlayer, MusicClient
 
 
 class MusicPlayerGUI(tk.Tk):
@@ -15,19 +15,32 @@ class MusicPlayerGUI(tk.Tk):
         self.minsize(1020, 660)
 
         self.client = MusicClient()
-        self.player = PipeMp3Player()
+        self.player = AudioPlayer()
         self.events = queue.Queue()
         self.songs = []
+        self.downloaded_files = []
+        self.session = None
         self.current_result = None
         self.transfer_thread = None
         self.playback_thread = None
+        self.downloaded_thread = None
+        self.transfer_done_handled = False
+        self.transfer_active = False
+        self.cancel_requested = False
         self.audio_active = False
         self.audio_paused = False
+        self.seeking = False
+        self.playback_seconds = 0
+        self.seek_limit_seconds = 180
+        self.loaded_seconds = 0
+        self.total_seconds = 180
+        self.total_bytes = 0
 
         self.setup_styles()
         self.build_ui()
         self.after(100, self.process_events)
         self.load_songs()
+        self.load_downloaded()
 
     def setup_styles(self):
         self.bg = "#f4f0f7"
@@ -55,13 +68,7 @@ class MusicPlayerGUI(tk.Tk):
         root = ttk.Frame(self, padding=12)
         root.pack(fill="both", expand=True)
 
-        ttk.Label(root, text="Practica 3: streaming MP3 con UDP, hilos y tuberia", style="Title.TLabel").pack(anchor="w")
-        ttk.Label(
-            root,
-            text="Reproductor interno: no abre Windows Media Player. La transferencia UDP y la reproduccion viven en hilos separados unidos por una tuberia.",
-            style="Subtitle.TLabel",
-        ).pack(anchor="w", pady=(0, 12))
-        ttk.Label(root, text="UDP + ACK acumulado | Pipe con buffer grande | Metadatos ID3 | Reproduccion interna MCI", style="Hero.TLabel").pack(anchor="w", pady=(0, 12))
+        ttk.Label(root, text="Practica 3 - UDP, hilos y tuberia", style="Title.TLabel").pack(anchor="w", pady=(0, 12))
 
         main = ttk.Frame(root)
         main.pack(fill="both", expand=True)
@@ -94,21 +101,33 @@ class MusicPlayerGUI(tk.Tk):
         side.grid(row=0, column=1, sticky="nsew")
 
         self.refresh_button = ttk.Button(side, text="Cargar lista", style="Action.TButton", command=self.load_songs)
-        self.stream_button = ttk.Button(side, text="Iniciar streaming UDP", style="Action.TButton", command=self.stream_selected, state="disabled")
-        self.pause_button = ttk.Button(side, text="Pausar audio", style="Action.TButton", command=self.pause_audio, state="disabled")
-        self.resume_button = ttk.Button(side, text="Reanudar audio", style="Action.TButton", command=self.resume_audio, state="disabled")
-        self.stop_button = ttk.Button(side, text="Detener audio interno", style="Action.TButton", command=self.stop_audio, state="disabled")
+        self.stream_button = ttk.Button(side, text="Iniciar transferencia UDP", style="Action.TButton", command=self.stream_selected, state="disabled")
+        self.cancel_button = ttk.Button(side, text="Cancelar transferencia", style="Action.TButton", command=self.cancel_transfer, state="disabled")
+        self.pause_button = ttk.Button(side, text="Pausar reproduccion", style="Action.TButton", command=self.pause_audio, state="disabled")
+        self.resume_button = ttk.Button(side, text="Reanudar reproduccion", style="Action.TButton", command=self.resume_audio, state="disabled")
         self.refresh_button.pack(fill="x", pady=(0, 8))
         self.stream_button.pack(fill="x", pady=(0, 8))
+        self.cancel_button.pack(fill="x", pady=(0, 8))
         self.pause_button.pack(fill="x", pady=(0, 8))
-        self.resume_button.pack(fill="x", pady=(0, 8))
-        self.stop_button.pack(fill="x", pady=(0, 18))
+        self.resume_button.pack(fill="x", pady=(0, 18))
 
         self.meta_title = self.info(side, "Titulo", "Sin seleccion")
         self.meta_artist = self.info(side, "Artista", "-")
         self.meta_album = self.info(side, "Album", "-")
         self.meta_year = self.info(side, "Anio", "-")
         self.meta_genre = self.info(side, "Genero", "-")
+
+        ttk.Label(side, text="Descargadas", foreground=self.muted).pack(anchor="w", pady=(8, 0))
+        self.downloaded_combo = ttk.Combobox(side, state="readonly")
+        self.downloaded_combo.pack(fill="x", pady=(4, 8))
+        self.play_downloaded_button = ttk.Button(
+            side,
+            text="Reproducir descargada",
+            style="Action.TButton",
+            command=self.play_downloaded,
+            state="disabled",
+        )
+        self.play_downloaded_button.pack(fill="x")
 
         bottom = ttk.Frame(root)
         bottom.pack(fill="x", pady=(12, 0))
@@ -118,7 +137,7 @@ class MusicPlayerGUI(tk.Tk):
 
         self.transfer_state = self.status_card(bottom, 0, "Hilo de transferencia", "Esperando")
         self.playback_state = self.status_card(bottom, 1, "Hilo de reproduccion interna", "Esperando")
-        self.pipe_state = self.status_card(bottom, 2, "Tuberia / buffer", "0 chunks")
+        self.pipe_state = self.status_card(bottom, 2, "Tuberia / cache disponible", "0 chunks")
 
         progress_frame = ttk.LabelFrame(root, text="Progreso UDP con ventana deslizante", style="Panel.TLabelframe", padding=10)
         progress_frame.pack(fill="x", pady=(12, 0))
@@ -126,6 +145,25 @@ class MusicPlayerGUI(tk.Tk):
         self.progress_label.pack(anchor="w")
         self.progress = ttk.Progressbar(progress_frame, maximum=100, style="Horizontal.TProgressbar")
         self.progress.pack(fill="x", pady=(6, 0))
+
+        playback_frame = ttk.LabelFrame(root, text="Reproduccion y tuberia", style="Panel.TLabelframe", padding=10)
+        playback_frame.pack(fill="x", pady=(12, 0))
+        playback_frame.columnconfigure(0, weight=1)
+        playback_frame.columnconfigure(1, weight=0)
+        self.playback_time_label = ttk.Label(playback_frame, text="Reproducido: 0 s")
+        self.playback_time_label.grid(row=0, column=0, sticky="w")
+        self.buffer_mb_label = ttk.Label(playback_frame, text="Cache disponible: 0.00 MB", font=("Segoe UI", 10, "bold"))
+        self.buffer_mb_label.grid(row=0, column=1, sticky="e")
+        self.seek_scale = ttk.Scale(playback_frame, from_=0, to=self.seek_limit_seconds, orient="horizontal")
+        self.seek_scale.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        self.seek_scale.bind("<ButtonPress-1>", self.start_seek_drag)
+        self.seek_scale.bind("<ButtonRelease-1>", self.finish_seek_drag)
+        self.loaded_label = ttk.Label(playback_frame, text="Cargado hasta: 0 s")
+        self.loaded_label.grid(row=2, column=0, sticky="w", pady=(6, 0))
+        self.loaded_progress = ttk.Progressbar(playback_frame, maximum=100, style="Horizontal.TProgressbar")
+        self.loaded_progress.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+        self.seek_hint = ttk.Label(playback_frame, text="La barra solo permite moverse dentro de lo ya cargado.", foreground=self.muted)
+        self.seek_hint.grid(row=4, column=0, columnspan=2, sticky="w", pady=(4, 0))
 
         log_frame = ttk.LabelFrame(root, text="Log", style="Panel.TLabelframe", padding=10)
         log_frame.pack(fill="both", expand=True, pady=(12, 0))
@@ -153,12 +191,13 @@ class MusicPlayerGUI(tk.Tk):
     def set_busy(self, busy):
         self.refresh_button.config(state="disabled" if busy else "normal")
         self.stream_button.config(state="disabled" if busy or not self.current_selection() else "normal")
+        self.cancel_button.config(state="normal" if self.transfer_active else "disabled")
+        self.play_downloaded_button.config(state="normal" if self.downloaded_files and not self.transfer_active else "disabled")
         self.update_audio_buttons()
 
     def update_audio_buttons(self):
         self.pause_button.config(state="normal" if self.audio_active and not self.audio_paused else "disabled")
         self.resume_button.config(state="normal" if self.audio_active and self.audio_paused else "disabled")
-        self.stop_button.config(state="normal" if self.audio_active else "disabled")
 
     def load_songs(self):
         self.set_busy(True)
@@ -173,6 +212,18 @@ class MusicPlayerGUI(tk.Tk):
                 self.events.put(("error", f"No se pudo cargar la lista: {error}"))
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def load_downloaded(self):
+        folder = self.client.downloads_dir
+        folder.mkdir(exist_ok=True)
+        self.downloaded_files = sorted(
+            [path for path in folder.glob("*.mp3") if path.is_file() and not path.name.startswith("stream_")],
+            key=lambda path: path.name.lower(),
+        )
+        self.downloaded_combo["values"] = [path.name for path in self.downloaded_files]
+        if self.downloaded_files and self.downloaded_combo.current() == -1:
+            self.downloaded_combo.current(0)
+        self.play_downloaded_button.config(state="normal" if self.downloaded_files and not self.transfer_active else "disabled")
 
     def current_selection(self):
         selection = self.listbox.curselection()
@@ -189,8 +240,17 @@ class MusicPlayerGUI(tk.Tk):
         self.meta_album.config(text=song.get("album", "Desconocido"))
         self.meta_year.config(text=song.get("year", "N/D"))
         self.meta_genre.config(text=song.get("genre", "N/D"))
-        self.stream_button.config(state="normal")
+        self.total_seconds = self.song_duration(song)
+        self.seek_limit_seconds = max(30, self.total_seconds)
+        self.seek_scale.config(to=self.seek_limit_seconds)
+        self.stream_button.config(state="disabled" if self.transfer_active else "normal")
         self.log(f"Seleccion: {song['name']} | {song.get('artist')} - {song.get('album')}")
+
+    def song_duration(self, song):
+        duration = int(song.get("duration_seconds") or 0)
+        if duration > 0:
+            return duration
+        return max(30, int(song.get("size", 0) / 40000))
 
     def stream_selected(self):
         song = self.current_selection()
@@ -201,13 +261,28 @@ class MusicPlayerGUI(tk.Tk):
         self.progress_label.config(text="0%")
         self.transfer_state.config(text="Recibiendo paquetes UDP")
         self.playback_state.config(text="Esperando datos en tuberia")
-        self.pipe_state.config(text="0 chunks / 0 bytes")
+        self.pipe_state.config(text="0 chunks / 0.00 MB")
         self.audio_active = False
         self.audio_paused = False
+        self.transfer_active = True
+        self.cancel_requested = False
+        self.transfer_done_handled = False
+        self.total_bytes = int(song.get("size", 0))
+        self.total_seconds = self.song_duration(song)
+        self.loaded_seconds = 0
+        self.seek_limit_seconds = max(30, self.total_seconds)
+        self.seek_scale.config(to=self.seek_limit_seconds)
+        self.seeking = False
+        self.playback_seconds = 0
+        self.seek_scale.set(0)
+        self.playback_time_label.config(text="Reproducido: 0 s")
+        self.loaded_label.config(text="Cargado hasta: 0 s")
+        self.loaded_progress["value"] = 0
+        self.buffer_mb_label.config(text="Cache disponible: 0.00 MB")
         self.update_audio_buttons()
         self.set_busy(True)
         self.log("Iniciando dos hilos: transferencia y reproduccion interna.")
-        self.log("La tuberia comunica el flujo ordenado recibido hacia el reproductor MCI embebido.")
+        self.log("La tuberia comunica el flujo ordenado recibido hacia el reproductor interno.")
 
         def progress(received, total):
             self.events.put(("progress", (received, total)))
@@ -218,14 +293,89 @@ class MusicPlayerGUI(tk.Tk):
         def playback_status(status, bytes_available):
             self.events.put(("playback", (status, bytes_available)))
 
-        self.current_result, self.transfer_thread, self.playback_thread, _pipe = self.client.start_streaming(
+        def position_status(seconds, skipping):
+            self.events.put(("position", (seconds, skipping)))
+
+        self.session = self.client.start_streaming(
             song["name"],
             self.player,
             progress=progress,
             pipe_status=pipe_status,
             playback_status=playback_status,
+            position_status=position_status,
         )
+        self.current_result = self.session.result
+        self.transfer_thread = self.session.transfer_thread
+        self.playback_thread = self.session.playback_thread
         self.after(300, self.watch_stream)
+
+    def start_seek_drag(self, _event=None):
+        self.seeking = True
+
+    def finish_seek_drag(self, _event=None):
+        target_seconds = int(float(self.seek_scale.get()))
+        self.seeking = False
+        if self.transfer_active and target_seconds > self.loaded_seconds:
+            self.seek_scale.set(self.playback_seconds)
+            messagebox.showwarning(
+                "Audio no cargado",
+                f"Todavia no se ha cargado el segundo {target_seconds}. "
+                f"Solo esta disponible hasta el segundo {self.loaded_seconds}.",
+            )
+            self.log(f"Seek bloqueado: {target_seconds} s aun no esta cargado.")
+            return
+        ok, message = self.player.seek_to(target_seconds)
+        if ok:
+            self.playback_state.config(text=message)
+            self.log(message)
+        else:
+            self.seek_scale.set(self.playback_seconds)
+            self.log(f"No se pudo mover la reproduccion: {message}")
+
+    def play_downloaded(self):
+        index = self.downloaded_combo.current()
+        if index < 0 or index >= len(self.downloaded_files):
+            return
+
+        path = self.downloaded_files[index]
+        self.audio_active = False
+        self.audio_paused = False
+        self.playback_seconds = 0
+        self.seek_scale.set(0)
+        self.playback_time_label.config(text="Reproducido: 0 s")
+        self.playback_state.config(text=f"Reproduciendo descargada: {path.name}")
+        self.log(f"Reproduciendo archivo descargado: {path.name}")
+        self.update_audio_buttons()
+
+        def playback_status(status, bytes_available):
+            self.events.put(("playback", (status, bytes_available)))
+
+        def position_status(seconds, seeking):
+            self.events.put(("position", (seconds, seeking)))
+
+        def worker():
+            ok = self.player.play_downloaded_file(path, playback_status, position_status)
+            self.events.put(("downloaded_done", ok))
+
+        self.downloaded_thread = threading.Thread(target=worker, name="hilo-descargada", daemon=True)
+        self.downloaded_thread.start()
+
+    def cancel_transfer(self):
+        if not self.transfer_active:
+            return
+        self.cancel_requested = True
+        self.transfer_active = False
+        if self.session:
+            self.session.cancel()
+        self.player.stop_requested.set()
+        self.audio_active = False
+        self.audio_paused = False
+        self.transfer_state.config(text="Cancelando transferencia")
+        self.playback_state.config(text="Reproduccion detenida")
+        self.log("Transferencia cancelada: se cerro la tuberia y se detuvo el reproductor interno.")
+        self.cancel_button.config(state="disabled")
+        self.update_audio_buttons()
+        threading.Thread(target=self.player.stop, name="detener-audio", daemon=True).start()
 
     def pause_audio(self):
         ok, message = self.player.pause()
@@ -247,47 +397,57 @@ class MusicPlayerGUI(tk.Tk):
             self.log(f"No se pudo reanudar: {message}")
         self.update_audio_buttons()
 
-    def stop_audio(self):
-        self.player.stop_audio()
-        self.audio_active = False
-        self.audio_paused = False
-        self.playback_state.config(text="Audio interno detenido")
-        self.log("Audio interno detenido.")
-        self.update_audio_buttons()
-
     def stop_stream(self):
-        self.player.stop()
-        self.audio_active = False
-        self.audio_paused = False
-        self.log("Solicitud de detener reproduccion y tuberia enviada.")
-        self.update_audio_buttons()
+        self.cancel_transfer()
 
     def watch_stream(self):
         if not self.current_result:
             return
 
-        if self.transfer_thread.is_alive() or self.playback_thread.is_alive():
+        result = self.current_result
+        transfer_alive = self.session.transfer_thread.is_alive() if self.session else False
+        playback_alive = self.session.playback_thread.is_alive() if self.session else False
+
+        if self.session and not transfer_alive and not self.transfer_done_handled:
+            self.transfer_done_handled = True
+            was_cancelled = self.cancel_requested
+            self.cancel_requested = False
+            self.transfer_active = False
+            self.set_busy(False)
+
+            if result.error:
+                self.transfer_state.config(text="Cancelada" if was_cancelled else "Error")
+                self.audio_active = False
+                self.audio_paused = False
+                self.update_audio_buttons()
+                if was_cancelled:
+                    self.progress_label.config(text="Transferencia cancelada por el usuario")
+                    self.log("Cancelacion completada sin marcarla como error de la practica.")
+                else:
+                    self.playback_state.config(text="Detenida")
+                    messagebox.showerror("Error", str(result.error))
+                    self.log(f"Error: {result.error}")
+            else:
+                self.transfer_state.config(text="Descarga completa")
+                if self.audio_active:
+                    self.playback_state.config(text="Reproduciendo desde tuberia/cache")
+                self.progress["value"] = 100
+                self.loaded_seconds = self.total_seconds
+                self.loaded_label.config(text=f"Cargado hasta: {self.loaded_seconds} s")
+                self.loaded_progress["value"] = 100
+                self.progress_label.config(text=f"Archivo guardado: {Path(result.path).name}; audio sigue leyendo cache")
+                self.log(f"Descarga finalizada: {result.path}")
+                self.load_downloaded()
+
+        if playback_alive:
             self.after(300, self.watch_stream)
             return
 
-        result = self.current_result
         self.current_result = None
+        self.session = None
         self.set_busy(False)
-        if result.error:
-            self.transfer_state.config(text="Error")
-            self.playback_state.config(text="Detenida")
-            self.audio_active = False
-            self.audio_paused = False
-            self.update_audio_buttons()
-            messagebox.showerror("Error", str(result.error))
-            self.log(f"Error: {result.error}")
-        else:
-            self.transfer_state.config(text="Descarga completa")
-            if not self.audio_active:
-                self.playback_state.config(text="Tuberia consumida")
-            self.progress["value"] = 100
-            self.progress_label.config(text=f"Archivo guardado: {Path(result.path).name}")
-            self.log(f"Descarga finalizada: {result.path}")
+        if not result.error and not self.audio_active:
+            self.playback_state.config(text="Tuberia consumida")
 
     def process_events(self):
         try:
@@ -312,19 +472,43 @@ class MusicPlayerGUI(tk.Tk):
                     self.progress["value"] = percent
                     self.progress_label.config(text=f"{percent}% ({received}/{total} bytes)")
                     self.transfer_state.config(text=f"UDP + ACK acumulado: {percent}%")
+                    if total:
+                        self.loaded_seconds = min(self.total_seconds, int(self.total_seconds * received / total))
+                        self.loaded_label.config(text=f"Cargado hasta: {self.loaded_seconds} s")
+                        self.loaded_progress["value"] = percent
 
                 elif event == "pipe":
                     chunks, bytes_buffered = payload
-                    self.pipe_state.config(text=f"{chunks} chunks / {bytes_buffered} bytes")
+                    mb = bytes_buffered / (1024 * 1024)
+                    self.pipe_state.config(text=f"{chunks} chunks / {mb:.2f} MB")
+                    self.buffer_mb_label.config(text=f"Cache disponible: {mb:.2f} MB")
 
                 elif event == "playback":
                     status, bytes_available = payload
                     self.playback_state.config(text=f"{status}: {bytes_available} bytes")
                     status_lower = status.lower()
-                    if "reproduciendo" in status_lower or "activo" in status_lower:
+                    if "reproduciendo" in status_lower:
                         self.audio_active = True
                         self.audio_paused = False
                         self.update_audio_buttons()
+
+                elif event == "position":
+                    seconds, seeking = payload
+                    self.playback_seconds = seconds
+                    if seconds >= self.seek_limit_seconds - 10:
+                        self.seek_limit_seconds = seconds + 120
+                        self.seek_scale.config(to=self.seek_limit_seconds)
+                    if not self.seeking:
+                        self.seek_scale.set(seconds)
+                    mode = "moviendo" if seeking else "reproduciendo"
+                    self.playback_time_label.config(text=f"Reproducido: {seconds} s ({mode})")
+
+                elif event == "downloaded_done":
+                    self.audio_active = False
+                    self.audio_paused = False
+                    self.update_audio_buttons()
+                    if payload:
+                        self.playback_state.config(text="Descargada finalizada")
 
                 elif event == "error":
                     self.set_busy(False)

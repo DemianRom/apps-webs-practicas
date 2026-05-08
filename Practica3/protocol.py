@@ -2,6 +2,11 @@ import json
 import struct
 from pathlib import Path
 
+try:
+    import miniaudio
+except Exception:
+    miniaudio = None
+
 
 HOST = "127.0.0.1"
 PORT = 5000
@@ -11,8 +16,8 @@ TIMEOUT_SECONDS = 1.0
 MAX_RETRIES = 20
 
 PIPE_CHUNK_SIZE = 4096
-PIPE_MAX_CHUNKS = 512
-PIPE_START_BYTES = 256 * 1024
+PIPE_MAX_CHUNKS = 1024
+PIPE_START_BYTES = 1024 * 1024
 
 SONGS_DIR = Path("canciones")
 DOWNLOADS_DIR = Path("descargadas")
@@ -178,12 +183,19 @@ def mp3_metadata(path):
     path = Path(path)
     metadata = read_id3v1(path)
     metadata.update({key: value for key, value in read_id3v2(path).items() if value})
+    duration_seconds = 0
+    if miniaudio:
+        try:
+            duration_seconds = int(miniaudio.mp3_get_file_info(str(path)).duration)
+        except Exception:
+            duration_seconds = 0
     return {
         "title": metadata.get("title") or path.stem,
         "artist": metadata.get("artist") or "Desconocido",
         "album": metadata.get("album") or "Desconocido",
         "year": metadata.get("year") or "N/D",
         "genre": metadata.get("genre") or "N/D",
+        "duration_seconds": duration_seconds,
     }
 
 

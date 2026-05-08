@@ -1,4 +1,6 @@
+import argparse
 import socket
+import time
 from pathlib import Path
 
 from protocol import (
@@ -39,7 +41,7 @@ def send_with_ack(sock, packet, address, expected_ack):
     return False
 
 
-def send_song(sock, address, filename):
+def send_song(sock, address, filename, delay_seconds=0):
     try:
         song_path = safe_song_path(SONGS_DIR, filename)
     except ValueError as error:
@@ -65,7 +67,10 @@ def send_song(sock, address, filename):
             packets.append(pack_data(packet_number, chunk))
             packet_number += 1
 
-    if not send_with_sliding_window(sock, packets, address):
+    if delay_seconds > 0:
+        print(f"Modo demo lento: {delay_seconds * 1000:.0f} ms entre paquetes UDP")
+
+    if not send_with_sliding_window(sock, packets, address, delay_seconds):
         sock.sendto(pack_error("Transferencia cancelada: demasiados ACK perdidos"), address)
         print("Transferencia cancelada por falta de ACK.")
         return
@@ -74,16 +79,19 @@ def send_song(sock, address, filename):
     print("Transferencia completa.\n")
 
 
-def send_with_sliding_window(sock, packets, address):
+def send_with_sliding_window(sock, packets, address, delay_seconds=0):
     base = 0
     next_packet = 0
     retries = 0
     total_packets = len(packets)
+    last_reported_percent = -1
 
     while base < total_packets:
         while next_packet < total_packets and next_packet < base + WINDOW_SIZE:
             sock.sendto(packets[next_packet], address)
             next_packet += 1
+            if delay_seconds > 0:
+                time.sleep(delay_seconds)
 
         try:
             response, response_address = sock.recvfrom(1024)
@@ -103,9 +111,15 @@ def send_with_sliding_window(sock, packets, address):
         if ack >= base:
             base = ack + 1
             retries = 0
+            percent = int(base * 100 / total_packets)
 
-            if ack % 1000 == 0:
-                print(f"  ACK acumulado hasta PKT[{ack}]", flush=True)
+            if percent != last_reported_percent and (delay_seconds > 0 or percent % 10 == 0):
+                last_reported_percent = percent
+                print(
+                    f"  Servidor: {percent:3d}% enviado y confirmado "
+                    f"({base}/{total_packets} paquetes, ACK[{ack}])",
+                    flush=True,
+                )
 
     return True
 
@@ -121,14 +135,17 @@ def send_song_list(sock, address):
     print(f"Lista enviada a {address[0]}:{address[1]} ({len(songs)} canciones MP3)")
 
 
-def run_server(host=HOST, port=PORT):
+def run_server(host=HOST, port=PORT, delay_ms=0):
     Path(SONGS_DIR).mkdir(exist_ok=True)
+    delay_seconds = max(0, delay_ms) / 1000
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         sock.bind((host, port))
         sock.settimeout(TIMEOUT_SECONDS)
         print(f"Servidor UDP escuchando en {host}:{port}")
         print("Practica 3: MP3 + metadatos + cliente con tuberia entre hilos")
+        if delay_ms > 0:
+            print(f"Modo demo lento activado: {delay_ms} ms por paquete UDP")
         print(f"Carpeta de canciones: {Path(SONGS_DIR).resolve()}\n")
 
         while True:
@@ -141,10 +158,20 @@ def run_server(host=HOST, port=PORT):
                 send_song_list(sock, address)
             elif message.startswith(REQUEST_FILE_PREFIX):
                 filename = message[len(REQUEST_FILE_PREFIX):].decode("utf-8", errors="replace").strip()
-                send_song(sock, address, filename)
+                send_song(sock, address, filename, delay_seconds)
             else:
                 sock.sendto(pack_error("Peticion desconocida"), address)
 
 
 if __name__ == "__main__":
-    run_server()
+    parser = argparse.ArgumentParser(description="Servidor UDP para Practica 3")
+    parser.add_argument("--host", default=HOST, help="IP donde escuchara el servidor")
+    parser.add_argument("--port", type=int, default=PORT, help="Puerto UDP")
+    parser.add_argument(
+        "--delay-ms",
+        type=int,
+        default=0,
+        help="Pausa artificial por paquete para demostrar streaming mientras se descarga",
+    )
+    args = parser.parse_args()
+    run_server(args.host, args.port, args.delay_ms)
