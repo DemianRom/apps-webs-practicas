@@ -1,3 +1,18 @@
+"""
+Practica 3 - Streaming MP3 con UDP, hilos y tuberia
+Materia: Aplicaciones para Comunicaciones en Web (6CM3)
+ESCOM - IPN | Ingenieria en Sistemas Computacionales (6to semestre)
+
+Integrantes:
+- Romero Bautista Demian
+- Ferreira Rodriguez Hector Said
+- Jaimes Uribe Mateo Alejandro
+
+Responsabilidad del archivo:
+Implementa el servidor UDP: lista canciones, atiende solicitudes GET y
+transfiere audio con ventana deslizante y ACK acumulado.
+"""
+
 import argparse
 import socket
 import time

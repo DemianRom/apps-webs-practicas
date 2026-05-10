@@ -1,3 +1,18 @@
+"""
+Practica 3 - Streaming MP3 con UDP, hilos y tuberia
+Materia: Aplicaciones para Comunicaciones en Web (6CM3)
+ESCOM - IPN | Ingenieria en Sistemas Computacionales (6to semestre)
+
+Integrantes:
+- Romero Bautista Demian
+- Ferreira Rodriguez Hector Said
+- Jaimes Uribe Mateo Alejandro
+
+Responsabilidad del archivo:
+Interfaz grafica de la practica. Controla acciones del usuario, muestra
+progreso de transferencia/reproduccion y consume eventos de hilos de trabajo.
+"""
+
 import queue
 import threading
 import tkinter as tk

@@ -1,3 +1,18 @@
+"""
+Practica 3 - Streaming MP3 con UDP, hilos y tuberia
+Materia: Aplicaciones para Comunicaciones en Web (6CM3)
+ESCOM - IPN | Ingenieria en Sistemas Computacionales (6to semestre)
+
+Integrantes:
+- Romero Bautista Demian
+- Ferreira Rodriguez Hector Said
+- Jaimes Uribe Mateo Alejandro
+
+Responsabilidad del archivo:
+Define el contrato de protocolo (tipos de paquete, empaquetado/desempaquetado),
+constantes de red y funciones de metadatos MP3 usadas por cliente y servidor.
+"""
+
 import json
 import struct
 from pathlib import Path

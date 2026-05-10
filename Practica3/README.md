@@ -237,3 +237,113 @@ Probar transferencia:
 - La carpeta `descargadas/` se usa para guardar archivos recibidos durante las pruebas.
 - La cancelacion cierra la tuberia y detiene los hilos de la sesion.
 - La practica conserva UDP y control de flujo de la Practica 2, pero agrega concurrencia y tuberia para cumplir la Practica 3.
+
+## Sincronizacion de hilos
+
+La practica si usa sincronizacion de hilos. No se hace con semaforos manuales, pero si con primitivas seguras de Python:
+
+- `threading.Lock` dentro de `AudioPipe`: protege lectura/escritura concurrente del buffer compartido.
+- `threading.Condition` dentro de `AudioPipe`: permite que el hilo reproductor espere datos cuando la tuberia esta vacia y despierte cuando el hilo de transferencia escribe.
+- `threading.Event` en la sesion/cliente: permite cancelar transferencia y cierre ordenado.
+- `queue.Queue` en GUI: paso de eventos thread-safe para actualizar interfaz sin tocar widgets desde hilos de trabajo.
+
+Con esto se evita corrupcion del buffer, espera activa innecesaria y bloqueos por acceso concurrente a la GUI.
+
+## Documentacion breve de funciones y clases
+
+### `protocol.py`
+
+- `pack_json(kind, payload)`: serializa mensaje JSON para lista/metadatos.
+  Parametros: `kind` (`str`), `payload` (`dict`/`list`).
+  Entrada: datos logicos de protocolo.
+  Salida: `bytes`.
+- `unpack_json(data)`: deserializa JSON recibido.
+  Parametros: `data` (`bytes`).
+  Entrada: paquete JSON.
+  Salida: tupla `(kind, payload)`.
+- `pack_meta(total_size)` / `unpack_meta(packet)`: empaqueta/desempaqueta tamano total de archivo.
+  Parametros: `total_size` (`int`), `packet` (`bytes`).
+  Salida: `bytes` o `int`.
+- `pack_data(number, chunk)` / `unpack_data(packet)`: crea/lee paquete de datos numerado.
+  Parametros: `number` (`int`), `chunk` (`bytes`).
+  Salida: `bytes` o `(numero, bytes_chunk)`.
+- `pack_ack(number)` / `unpack_ack(packet)`: crea/lee ACK acumulado.
+  Parametros: `number` (`int`), `packet` (`bytes`).
+  Salida: `bytes` o `int`.
+- `pack_end()`: paquete de fin de transferencia.
+  Salida: `bytes`.
+- `pack_error(message)` / `unpack_error(packet)`: error de protocolo.
+  Parametros: `message` (`str`), `packet` (`bytes`).
+  Salida: `bytes` o `str`.
+- `safe_song_path(folder, filename)`: valida ruta segura y extension `.mp3`.
+  Parametros: `folder` (`Path|str`), `filename` (`str`).
+  Salida: `Path` valido o excepcion.
+- `read_id3v2(path)`, `read_id3v1(path)`, `mp3_metadata(path)`: extraen metadatos MP3.
+  Parametros: `path` (`Path|str`).
+  Salida: `dict` con titulo, artista, album, anio, genero y duracion aproximada.
+- `list_mp3_files(folder)`: lista MP3 del servidor.
+  Parametros: `folder` (`Path|str`).
+  Salida: lista ordenada de `Path`.
+
+### `servidor.py`
+
+- `send_with_ack(sock, packet, address, expected_ack)`: envia paquete de control y espera ACK exacto.
+  Parametros: socket UDP, `packet` (`bytes`), `address` (`(host,port)`), `expected_ack` (`int`).
+  Salida: `bool` exito/fallo.
+- `send_song(sock, address, filename, delay_seconds=0)`: flujo completo de envio de una cancion.
+  Entrada: nombre MP3 solicitado.
+  Proceso: valida, envia metadata, envia paquetes por ventana, cierra con `END`.
+  Salida: sin retorno; emite datagramas y logs.
+- `send_with_sliding_window(sock, packets, address, delay_seconds=0)`: algoritmo de ventana deslizante.
+  Parametros: lista de paquetes ya numerados.
+  Salida: `bool` (termino o cancelo por demasiados timeout).
+- `send_song_list(sock, address)`: envia lista de canciones con metadatos.
+  Salida: mensaje JSON por UDP.
+- `run_server(host=HOST, port=PORT, delay_ms=0)`: bucle principal del servidor.
+  Entrada: host/puerto opcionales y retardo de demo.
+  Salida: servicio UDP en ejecucion.
+
+### `cliente.py`
+
+- `emit(callback, *args)`: helper para publicar eventos si hay callback de GUI.
+  Salida: `None`.
+- `class AudioPipe`: buffer compartido entre hilo de transferencia e hilo de reproduccion.
+  Metodos clave:
+  `write(data)`, `read(size)`, `close()`, `available_bytes()`, `seek(offset)`.
+  Sincronizacion: usa lock + condition.
+- `class AudioPipeSource(miniaudio.StreamableSource)`: adapta `AudioPipe` al motor de audio.
+  Entrada: lectura por chunks.
+  Salida: bytes para decodificador.
+- `class StreamResult`: estructura de estado final de la transferencia/reproduccion.
+- `class StreamSession`: agrupa hilos, pipe y estado de una sesion activa.
+- `class MusicClient`: cliente UDP de lista y descarga.
+  Metodos principales:
+  `list_songs()`, `start_stream(...)`, `cancel_stream(...)`.
+  Entrada: comandos GUI/consola.
+  Salida: eventos de progreso y archivo en `descargadas/`.
+- `class AudioPlayer`: control de reproduccion (play/pause/resume/stop/seek).
+  Entrada: comandos del usuario.
+  Salida: estado de reproduccion y tiempo reproducido.
+- `class MiniaudioPipeEngine`: motor real que reproduce desde tuberia o archivo local.
+  Entrada: fuente de audio (`AudioPipeSource` o archivo).
+  Salida: audio en salida del sistema.
+- `main()`: demo de cliente por consola.
+
+### `gui.py`
+
+- `class MusicPlayerGUI(tk.Tk)`: interfaz principal.
+  Responsabilidad: presentar estados, iniciar/cancelar transferencia, controlar reproduccion, validar movimientos de barra y mostrar descargadas.
+- Funciones/metodos GUI clave:
+  `load_songs()`, `start_transfer()`, `cancel_transfer()`, `pause_playback()`, `resume_playback()`, `play_downloaded()`, `on_seek_changed()`, `process_events()`.
+  Entrada: acciones del usuario y eventos asincronos.
+  Salida: actualizacion visual y llamadas a `MusicClient`/`AudioPlayer`.
+
+## Resumen tecnico para exposicion
+
+La practica 3 mantiene UDP y ventana deslizante de la practica 2, pero agrega concurrencia real:
+
+1. Hilo de transferencia: recibe paquetes UDP, confirma ACK acumulado, guarda archivo y escribe bytes en `AudioPipe`.
+2. Hilo de reproduccion: consume bytes de `AudioPipe` con `miniaudio`, permitiendo escuchar mientras sigue la descarga.
+3. Hilo GUI: solo interfaz y visualizacion; no bloquea red ni audio.
+
+La sincronizacion se resuelve con `Lock`, `Condition`, `Event` y `Queue`, con lo cual la demostracion cumple la separacion solicitada por el profesor entre envio y reproduccion, comunicados por tuberia.
