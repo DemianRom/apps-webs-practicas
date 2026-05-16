@@ -1,0 +1,79 @@
+/******** Meter distintos tipos de datos en datagramas *************/
+ 
+DatagamSocket cl = new DatagramSocket(1234);
+ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+PrintWriter pw = new PrintWriter(new OutputStreamWriter(baos));
+pw.println("cadena1");
+pw.println("cadena2");
+pw.flush();
+byte[] b = baos.toByteArray();
+DatagramPacket p = new DatagramPacket(b,b.length,dst,pto);
+cl.send(p);
+/////////////////////////////////////////////////////
+DataOutputStream dos = new DataOutputStream(baos);
+dos.writeInt(1);
+dos.writeFloat(2.0f);
+dos.writeUTF("tres");
+dos.flush();
+byte[] b1 = baos.toByteArray();
+InetAddress dst = InetAddress.getByName("127.0.0.1");
+int pto= 5555;
+DatagramPacket p1 = new DatagramPacket(b1,b1.length,dst,pto);
+cl.send(p1);
+////////////////////////////////////////
+ObjectOutputStream oos = new ObjectOutputStream(baos);
+Objeto o = new Objeto(....);
+oos.writeObject(o);
+byte[] b2 = baos.toByteArray();
+DatagramPacket p3 = new DatagramPacket(b2,b2.length,dst,pto);
+cl.send(p3);
+///////////////////////////////////////////////////////////
+JSONObject json = new JSONObject();
+json.put("nombre", "Adrian");
+json.put("apaterno","Campos");
+json.put("amaterno","Lozano");
+ByteArrayOutputStream baos = new ByteArrayOutputStream();
+PrintWriter wr = new PrintWriter(new OutputStreamWriter(baos));
+wr.println(json.toString());
+wr.flush();
+byte[] b = baos.toByteArray();
+DatagramPacket p4 = new DatagramPacket(b,b.length,dst,pto);
+cl.send(p4);
+
+
+/*********** Sacar distintos tipos de dato de un datagrama *********/
+
+DatagramSocket s = new DatagramSocket(5555);
+for(;;){
+
+  DatagramPacket p = new DatagramPacket(new byte[65535],65535);
+  s.receive(p);
+  BufferedReader br = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(p.getData())));
+  String datos;
+  while((datos=br.readLine())!=null){
+        System.out.println(datos);
+       }//while
+////////////////////////////////////////
+  DatagramPacket p = new DatagramPacket(new byte[65535],65535);
+  s.receive(p);
+  DataInputStream dis = new DataInputStream(new ByteArrayInputStream(p.getData()));
+  int v1 = dis.readInt();
+  float v2 = dis.readFloat();
+  String v3 = dis.readUTF();
+////////////////////////////////////////////////
+  DatagramPacket p = new DatagramPacket(new byte[65535],65535);
+  s.receive(p);
+  ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(p.getData()));
+  Objeto o1 = (Objeto)ois.readObject();
+//////////////////////////////////////////////////////////
+  BufferedReader br = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(p.getData())));
+	    String datos;
+            JSONParser parser = new JSONParser();
+            JSONObject json = (JSONObject) parser.parse(datos);
+            String nombre = (String) json.get("nombre");
+            System.out.println("nombre:"+nombre);
+            String apaterno = (String) json.get("apaterno");
+            System.out.println("apellido paterno:"+apaterno);
+            String amaterno = (String) json.get("amaterno");
+            System.out.println("apellido materno:"+amaterno);
