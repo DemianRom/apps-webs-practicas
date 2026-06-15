@@ -41,6 +41,7 @@ private:
     void cmd_unirse(int fd, const json& msg);
     void cmd_crear_sala(int fd, const json& msg);
     void cmd_mensaje(int fd, const json& msg);
+    void cmd_imagen(int fd, const json& msg);
     void cmd_listar_salas(int fd);
     void cmd_listar_usuarios(int fd, const json& msg);
     void cmd_salir(int fd);

@@ -248,6 +248,7 @@ void ChatServer::procesar_mensaje(int fd, const json& msg) {
     if      (tipo == T_UNIRSE)       cmd_unirse(fd, msg);
     else if (tipo == T_CREAR_SALA)   cmd_crear_sala(fd, msg);
     else if (tipo == T_MENSAJE)      cmd_mensaje(fd, msg);
+    else if (tipo == T_IMAGEN)       cmd_imagen(fd, msg);
     else if (tipo == T_LISTAR_SALAS) cmd_listar_salas(fd);
     else if (tipo == T_LISTAR_USERS) cmd_listar_usuarios(fd, msg);
     else if (tipo == T_SALIR)        cmd_salir(fd);
@@ -357,6 +358,44 @@ void ChatServer::cmd_mensaje(int fd, const json& msg) {
 
     // Broadcast incluyendo al remitente (eco de confirmación)
     broadcast_sala(sala_n, bcast);
+}
+
+void ChatServer::cmd_imagen(int fd, const json& msg) {
+    auto it = clientes_.find(fd);
+    if (it == clientes_.end()) return;
+
+    if (!it->second.registrado()) {
+        enviar(fd, proto::error_msg("Debes unirte a una sala primero"));
+        return;
+    }
+    if (!msg.contains("datos") || !msg.contains("nombre_archivo")) {
+        enviar(fd, proto::error_msg("Faltan campos: nombre_archivo, datos"));
+        return;
+    }
+
+    const std::string& sala_n = it->second.sala_actual;
+    const std::string& nombre = it->second.nombre;
+    std::string archivo = msg["nombre_archivo"].get<std::string>();
+    std::string datos   = msg["datos"].get<std::string>();
+
+    // Limite de seguridad: ~3MB de base64 (~2.2MB de imagen real)
+    if (datos.size() > 3u * 1024 * 1024) {
+        enviar(fd, proto::error_msg("Imagen demasiado grande (max ~2MB)"));
+        return;
+    }
+
+    json img = proto::imagen(sala_n, nombre, archivo, datos);
+
+    // Reenviar la imagen completa a todos los miembros de la sala (incluido el remitente)
+    broadcast_sala(sala_n, img);
+
+    // En el historial guardamos solo una nota ligera (no el payload), para no inflar el log
+    json nota = proto::sistema(sala_n, nombre + " compartio la imagen: " + archivo);
+    salas_.at(sala_n).guardar_en_historial(nota);
+    guardar_mensaje_log(sala_n, nota);
+
+    std::cout << "[img] " << nombre << " compartio " << archivo
+              << " (" << datos.size() << " bytes b64) en #" << sala_n << "\n";
 }
 
 void ChatServer::cmd_listar_salas(int fd) {
