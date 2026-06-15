@@ -1,4 +1,5 @@
 #include "chat_client.hpp"
+#include "base64.hpp"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -9,6 +10,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <cstring>
+#include <fstream>
+#include <filesystem>
 
 ChatClient::ChatClient(std::string host, int puerto, std::string usuario)
     : host_(std::move(host)), puerto_(puerto), usuario_(std::move(usuario)) {}
@@ -68,6 +71,31 @@ void ChatClient::enviar_unirse(const std::string& sala) {
 void ChatClient::enviar_mensaje(const std::string& contenido) {
     enviar_json({ {"tipo", T_MENSAJE}, {"sala", sala_actual_},
                   {"usuario", usuario_}, {"contenido", contenido} });
+}
+
+std::string ChatClient::enviar_imagen(const std::string& ruta) {
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    if (!fs::exists(ruta, ec))
+        return "El archivo no existe: " + ruta;
+
+    auto tam = fs::file_size(ruta, ec);
+    if (ec) return "No se pudo leer el archivo";
+    if (tam > 2u * 1024 * 1024)
+        return "Imagen demasiado grande (max 2MB)";
+
+    std::ifstream f(ruta, std::ios::binary);
+    if (!f) return "No se pudo abrir el archivo";
+
+    std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(f)),
+                               std::istreambuf_iterator<char>());
+    if (bytes.empty()) return "El archivo esta vacio";
+
+    std::string nombre = fs::path(ruta).filename().string();
+    std::string datos  = b64::encode(bytes);
+
+    enviar_json(proto::imagen(sala_actual_, usuario_, nombre, datos));
+    return "";
 }
 
 void ChatClient::enviar_crear_sala(const std::string& sala) {

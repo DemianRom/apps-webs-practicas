@@ -19,6 +19,8 @@ public:
 
     void enviar_unirse(const std::string& sala);
     void enviar_mensaje(const std::string& contenido);
+    // Devuelve "" si tuvo exito, o un mensaje de error en caso contrario.
+    std::string enviar_imagen(const std::string& ruta);
     void enviar_crear_sala(const std::string& sala);
     void enviar_listar_salas();
     void enviar_listar_usuarios(const std::string& sala = "");
