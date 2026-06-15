@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
+# Practica 1 - Servicio de transferencia de archivos
+# Materia: Aplicaciones y Comunicaciones en Red (6CM1)
+# ESCOM - IPN | Ingenieria en Sistemas Computacionales (6to semestre)
+# Periodo: 26/2
+#
+# Integrantes:
+# - Romero Bautista Demian
+# - Ferreira Rodriguez Said
+#
+# Responsabilidad del archivo:
+# Script auxiliar para iniciar o coordinar la ejecucion de los componentes principales de la practica.
+
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"

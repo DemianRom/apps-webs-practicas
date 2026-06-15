@@ -1,3 +1,17 @@
+/*
+ * Practica 1 - Servicio de transferencia de archivos
+ * Materia: Aplicaciones y Comunicaciones en Red (6CM1)
+ * ESCOM - IPN | Ingenieria en Sistemas Computacionales (6to semestre)
+ * Periodo: 26/2
+ *
+ * Integrantes:
+ * - Romero Bautista Demian
+ * - Ferreira Rodriguez Said
+ *
+ * Responsabilidad del archivo:
+ * Proporciona una clase auxiliar para probar la interfaz grafica del cliente Java.
+ */
+
 package practica1;
 import java.util.List;
 public class TestGUI {

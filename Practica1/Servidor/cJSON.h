@@ -1,4 +1,18 @@
 /*
+ * Practica 1 - Servicio de transferencia de archivos
+ * Materia: Aplicaciones y Comunicaciones en Red (6CM1)
+ * ESCOM - IPN | Ingenieria en Sistemas Computacionales (6to semestre)
+ * Periodo: 26/2
+ *
+ * Integrantes:
+ * - Romero Bautista Demian
+ * - Ferreira Rodriguez Said
+ *
+ * Responsabilidad del archivo:
+ * Declara la interfaz de cJSON usada por el servidor para manejar mensajes JSON.
+ */
+
+/*
   Copyright (c) 2009-2017 Dave Gamble and cJSON contributors
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -261,7 +275,7 @@ CJSON_PUBLIC(cJSON *) cJSON_Duplicate(const cJSON *item, cJSON_bool recurse);
 CJSON_PUBLIC(cJSON_bool) cJSON_Compare(const cJSON * const a, const cJSON * const b, const cJSON_bool case_sensitive);
 
 /* Minify a strings, remove blank characters(such as ' ', '\t', '\r', '\n') from strings.
- * The input pointer json cannot point to a read-only address area, such as a string constant, 
+ * The input pointer json cannot point to a read-only address area, such as a string constant,
  * but should point to a readable and writable address area. */
 CJSON_PUBLIC(void) cJSON_Minify(char *json);
 

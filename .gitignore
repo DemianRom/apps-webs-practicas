@@ -30,6 +30,13 @@ Practica2/canciones/*.wav
 Practica2/descargadas/*
 Practica3/canciones/*.mp3
 Practica3/descargadas/*
+Practica4/1/
+Practica4/mirror*/
+Practica4/WebCrawler
+Practica4/Downloader
+Practica5/server
+Practica5/client
+Practica5/logs/*
 
 # Keep folder placeholders
 !Practica1/servidor_archivos/.gitkeep
@@ -38,3 +45,4 @@ Practica3/descargadas/*
 !Practica2/descargadas/.gitkeep
 !Practica3/canciones/.gitkeep
 !Practica3/descargadas/.gitkeep
+!Practica5/logs/.gitkeep

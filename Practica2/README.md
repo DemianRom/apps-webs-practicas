@@ -1,87 +1,97 @@
-# Practica 2 - Reproductor UDP en Python
+# Practica 2 - Reproductor con transferencia UDP
 
-## Contexto academico
+## Ficha academica
 
-Practica desarrollada para la unidad de aprendizaje **Aplicaciones para Comunicaciones en Web**, grupo **6CM3**, sexto semestre de la **Ingenieria en Sistemas Computacionales** en **ESCOM - IPN**.
+- **Materia:** Aplicaciones y Comunicaciones en Red.
+- **Profesor:** Axel Ernesto Moreno Cervantes.
+- **Grupo:** 6CM1.
+- **Periodo:** 26/2.
+- **Alumnos:** Demian Romero Bautista y Said Ferreira Rodriguez.
 
-## Integrantes
+## Objetivo
 
-- Romero Bautista Demian
-- Ferreira Rodriguez Hector Said
-- Jaimes Uribe Mateo Alejandro
+Implementar una aplicacion cliente-servidor que transfiera canciones usando sockets de datagrama (`UDP`) y un mecanismo propio de control de flujo basado en ventana deslizante y ACK acumulados.
 
 ## Descripcion
 
-Este proyecto es un reproductor de musica sencillo hecho en Python. La comunicacion entre cliente y servidor se hace con sockets de datagrama (`UDP`), como pide la practica.
+El servidor publica canciones desde la carpeta `canciones/`. El cliente solicita la lista de canciones, descarga una seleccion y la guarda en `descargadas/`. La GUI en Tkinter muestra las canciones disponibles, el progreso de descarga y permite reproducir el archivo una vez recibido completo.
 
-El servidor tiene canciones en la carpeta `canciones/`. El cliente pide la lista de canciones disponibles, selecciona una, la descarga completa usando control de flujo y, cuando termina de recibirse toda la informacion de la cancion, permite reproducirla.
+Aunque UDP no garantiza entrega ni orden, la practica agrega confiabilidad basica mediante:
 
-La idea fue dejar una implementacion casera y clara, sin librerias raras. Se usan librerias normales de Python como `socket`, `tkinter`, `threading`, `queue`, `struct`, `json`, `pathlib` y `winsound`.
+- Paquetes numerados.
+- Ventana deslizante.
+- ACK acumulados.
+- Reenvio por timeout.
+- Paquete de fin de transferencia.
 
-## Archivos
+## Estructura
 
-- `protocol.py`: contiene las constantes del proyecto y las funciones para armar y leer los paquetes que viajan por UDP. Aqui se definen los tipos de mensaje, el tamano de bloque, el tamano de ventana, el puerto, los ACK, los paquetes de datos, los errores y la senal de fin.
-- `servidor.py`: levanta el servidor UDP. Atiende peticiones para listar canciones y para enviar una cancion por partes desde la carpeta `canciones/`. Usa sliding window: manda varios paquetes dentro de una ventana y avanza cuando recibe ACK acumulado.
-- `cliente.py`: contiene la clase `MusicClient`, que pide la lista de canciones y descarga una cancion desde el servidor. Recibe paquetes UDP, guarda temporalmente los que lleguen dentro de la ventana y confirma el ultimo paquete consecutivo recibido. Tambien se puede ejecutar como cliente de consola para probar sin interfaz grafica.
-- `gui.py`: interfaz grafica sencilla hecha con `tkinter`. Muestra las canciones del servidor, permite descargar la seleccionada, muestra el progreso y reproduce la cancion descargada.
-- `README.md`: este documento. Explica como esta organizado el proyecto, como correrlo y como funciona el protocolo.
-- `canciones/`: carpeta donde el servidor busca los archivos `.wav`.
-- `descargadas/`: carpeta donde el cliente guarda las canciones recibidas.
+```text
+Practica2/
++-- cliente.py
++-- servidor.py
++-- gui.py
++-- protocol.py
++-- canciones/
++-- descargadas/
++-- README.md
+```
 
-## Como correrlo
+## Archivos principales
 
-Primero abre una terminal en esta carpeta y levanta el servidor:
+- `protocol.py`: constantes, formato de paquetes, tipos de mensaje y helpers del protocolo.
+- `servidor.py`: servidor UDP que lista canciones y envia archivos por paquetes.
+- `cliente.py`: cliente de consola y clase `MusicClient` para pedir listas y descargar canciones.
+- `gui.py`: interfaz grafica con Tkinter.
+- `canciones/`: carpeta de entrada del servidor.
+- `descargadas/`: carpeta donde el cliente guarda lo recibido.
+
+## Requisitos
+
+- Python 3.10 o superior.
+- Windows para reproduccion con `winsound`, o adaptacion del reproductor si se usa otro sistema.
+
+## Ejecucion
+
+Servidor:
 
 ```bash
+cd Practica2
 python servidor.py
 ```
 
-Luego abre otra terminal y corre la interfaz:
+Interfaz grafica:
 
 ```bash
 python gui.py
 ```
 
-Tambien puedes probar sin interfaz:
+Cliente de consola:
 
 ```bash
 python cliente.py
 ```
 
-## Protocolo
+## Flujo de transferencia
 
-El cliente manda `LIST` para pedir canciones o `GET nombre.wav` para descargar una cancion.
+1. El cliente envia `LIST`.
+2. El servidor responde con canciones disponibles.
+3. El cliente envia `GET nombre`.
+4. El servidor divide el archivo en paquetes numerados.
+5. El servidor envia varios paquetes dentro de una ventana.
+6. El cliente guarda paquetes recibidos y confirma el ultimo consecutivo.
+7. El servidor avanza la ventana cuando recibe ACK.
+8. Si hay timeout, se reenvia desde el primer paquete pendiente.
+9. Al terminar, el cliente guarda la cancion y habilita la reproduccion.
 
-La descarga usa control de flujo con sliding window:
+## Aprendizajes
 
-1. El servidor divide la cancion en paquetes numerados.
-2. El servidor manda varios paquetes mientras quepan en la ventana.
-3. El cliente recibe paquetes UDP y guarda los que pertenecen a su ventana de recepcion.
-4. El cliente escribe en el archivo solo los paquetes que ya estan completos y en orden.
-5. El cliente responde con un `ACK` acumulado, indicando el ultimo paquete consecutivo recibido.
-6. El servidor mueve la ventana cuando recibe el `ACK`.
-7. Si el servidor no recibe ACK a tiempo, reenvia la ventana desde el primer paquete pendiente.
-8. Cuando termina, manda un paquete de fin.
+- Comprender que UDP es rapido, pero no confiable por si mismo.
+- Construir confiabilidad basica desde la capa de aplicacion.
+- Manejar paquetes, orden, perdidas y reenvios.
+- Integrar red, archivos e interfaz grafica.
+- Visualizar la diferencia entre transferencia completa y reproduccion posterior.
 
-La cancion solo se puede reproducir despues de que la descarga termino completa.
+## Valor dentro del semestre
 
-## Flujo general
-
-1. Se ejecuta `servidor.py`.
-2. El servidor abre un socket UDP en `127.0.0.1:5000`.
-3. Se ejecuta `gui.py` o `cliente.py`.
-4. El cliente pide la lista con `LIST`.
-5. El servidor responde con los nombres y tamanos de las canciones `.wav`.
-6. El usuario selecciona una cancion.
-7. El cliente manda `GET nombre.wav`.
-8. El servidor envia la cancion en bloques numerados usando ventana deslizante.
-9. El cliente confirma con ACK acumulados.
-10. Al terminar, el archivo queda guardado en `descargadas/`.
-11. La interfaz habilita la reproduccion.
-
-## Notas
-
-- El reproductor integrado usa `winsound`, que viene con Python en Windows y reproduce archivos `.wav`.
-- La practica esta pensada para ejecutarse localmente, por eso el host por defecto es `127.0.0.1`.
-- Si se quiere usar entre dos computadoras de la misma red, se puede cambiar el `HOST` en `protocol.py` o al crear el cliente/servidor.
-- Los archivos `.wav` de prueba no se incluyen en el repositorio para mantenerlo limpio. Para probar la practica, coloca una o mas canciones `.wav` dentro de `canciones/`; los archivos recibidos por el cliente se generaran en `descargadas/`.
+Esta practica conecto la teoria de protocolos con una experiencia visible: descargar una cancion por una red no confiable. Fue el puente entre sockets simples y disenos mas complejos de streaming.

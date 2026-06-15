@@ -1,3 +1,17 @@
+/*
+ * Practica 4 - Web crawler y mirror local
+ * Materia: Aplicaciones y Comunicaciones en Red (6CM1)
+ * ESCOM - IPN | Ingenieria en Sistemas Computacionales (6to semestre)
+ * Periodo: 26/2
+ *
+ * Integrantes:
+ * - Romero Bautista Demian
+ * - Ferreira Rodriguez Said
+ *
+ * Responsabilidad del archivo:
+ * Contiene la logica principal del crawler: descarga HTTP, pool de hilos, frontera compartida y guardado local.
+ */
+
 #include "Extractor.hpp"
 #include <algorithm>
 #include <cctype>

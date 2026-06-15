@@ -1,3 +1,17 @@
+"""
+Practica 2 - Reproductor con transferencia UDP
+Materia: Aplicaciones y Comunicaciones en Red (6CM1)
+ESCOM - IPN | Ingenieria en Sistemas Computacionales (6to semestre)
+Periodo: 26/2
+
+Integrantes:
+- Romero Bautista Demian
+- Ferreira Rodriguez Said
+
+Responsabilidad del archivo:
+Implementa el servidor UDP que lista canciones y envia archivos con ventana deslizante y ACK acumulados.
+"""
+
 import socket
 from pathlib import Path
 

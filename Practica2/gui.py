@@ -1,3 +1,17 @@
+"""
+Practica 2 - Reproductor con transferencia UDP
+Materia: Aplicaciones y Comunicaciones en Red (6CM1)
+ESCOM - IPN | Ingenieria en Sistemas Computacionales (6to semestre)
+Periodo: 26/2
+
+Integrantes:
+- Romero Bautista Demian
+- Ferreira Rodriguez Said
+
+Responsabilidad del archivo:
+Implementa la interfaz grafica Tkinter para seleccionar, descargar y reproducir canciones.
+"""
+
 import queue
 import threading
 import tkinter as tk

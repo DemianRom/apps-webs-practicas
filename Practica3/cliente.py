@@ -1,12 +1,12 @@
 """
 Practica 3 - Streaming MP3 con UDP, hilos y tuberia
-Materia: Aplicaciones para Comunicaciones en Web (6CM3)
+Materia: Aplicaciones y Comunicaciones en Red (6CM1)
+Periodo: 26/2
 ESCOM - IPN | Ingenieria en Sistemas Computacionales (6to semestre)
 
 Integrantes:
 - Romero Bautista Demian
-- Ferreira Rodriguez Hector Said
-- Jaimes Uribe Mateo Alejandro
+- Ferreira Rodriguez Said
 
 Responsabilidad del archivo:
 Contiene la logica del cliente: descarga UDP con control de flujo,

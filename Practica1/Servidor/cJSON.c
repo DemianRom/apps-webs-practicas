@@ -1,4 +1,18 @@
 /*
+ * Practica 1 - Servicio de transferencia de archivos
+ * Materia: Aplicaciones y Comunicaciones en Red (6CM1)
+ * ESCOM - IPN | Ingenieria en Sistemas Computacionales (6to semestre)
+ * Periodo: 26/2
+ *
+ * Integrantes:
+ * - Romero Bautista Demian
+ * - Ferreira Rodriguez Said
+ *
+ * Responsabilidad del archivo:
+ * Incluye la implementacion local de cJSON utilizada para serializar y parsear mensajes JSON del protocolo.
+ */
+
+/*
   Copyright (c) 2009-2017 Dave Gamble and cJSON contributors
 
   Permission is hereby granted, free of charge, to any person obtaining a copy

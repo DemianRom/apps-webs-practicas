@@ -1,20 +1,18 @@
 # Cliente Java - Practica 1
 
-Cliente para el servicio de transferencia de archivos de la Practica 1.
+Cliente grafico para el servicio de transferencia de archivos de la Practica 1.
 
-## Contexto academico
+## Ficha academica
 
-Este modulo forma parte de la unidad de aprendizaje **Aplicaciones para Comunicaciones en Web**, grupo **6CM3**, sexto semestre de la **Ingenieria en Sistemas Computacionales** en **ESCOM - IPN**.
-
-## Integrantes
-
-- Romero Bautista Demian
-- Ferreira Rodriguez Hector Said
-- Jaimes Uribe Mateo Alejandro
+- **Materia:** Aplicaciones y Comunicaciones en Red.
+- **Profesor:** Axel Ernesto Moreno Cervantes.
+- **Grupo:** 6CM1.
+- **Periodo:** 26/2.
+- **Alumnos:** Demian Romero Bautista y Said Ferreira Rodriguez.
 
 ## Descripcion
 
-El cliente se conecta al servidor C mediante sockets TCP. Usa dos canales:
+El cliente se conecta al servidor C mediante sockets TCP y usa dos canales:
 
 - Puerto `8000`: canal permanente de metadatos en JSON.
 - Puerto `8001`: canal intermitente de datos para transferir bytes de archivos.
@@ -28,14 +26,14 @@ La interfaz grafica esta implementada con Java Swing en `ClienteGUI.java`.
 
 ## Ejecucion
 
+Antes de abrir el cliente, el servidor C debe estar ejecutandose desde `../Servidor`.
+
 Desde esta carpeta:
 
 ```bash
 mvn compile
 mvn exec:java -Dexec.mainClass="practica1.ClienteGUI"
 ```
-
-Antes de abrir el cliente, el servidor C debe estar ejecutandose desde `../Servidor`.
 
 ## Archivos principales
 

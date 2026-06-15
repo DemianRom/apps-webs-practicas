@@ -1,3 +1,17 @@
+/*
+ * Practica 4 - Web crawler y mirror local
+ * Materia: Aplicaciones y Comunicaciones en Red (6CM1)
+ * ESCOM - IPN | Ingenieria en Sistemas Computacionales (6to semestre)
+ * Periodo: 26/2
+ *
+ * Integrantes:
+ * - Romero Bautista Demian
+ * - Ferreira Rodriguez Said
+ *
+ * Responsabilidad del archivo:
+ * Implementa utilidades para extraer, resolver y normalizar enlaces encontrados en recursos web.
+ */
+
 #include "Extractor.hpp"
 #include <regex>
 #include <sstream>

@@ -1,3 +1,17 @@
+/*
+ * Practica 1 - Servicio de transferencia de archivos
+ * Materia: Aplicaciones y Comunicaciones en Red (6CM1)
+ * ESCOM - IPN | Ingenieria en Sistemas Computacionales (6to semestre)
+ * Periodo: 26/2
+ *
+ * Integrantes:
+ * - Romero Bautista Demian
+ * - Ferreira Rodriguez Said
+ *
+ * Responsabilidad del archivo:
+ * Implementa el servidor TCP en C, procesa comandos JSON y administra operaciones sobre archivos remotos.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -143,7 +157,7 @@ int main() {
         perror("listen meta");
         exit(EXIT_FAILURE);
     }
-    
+
     // Crear socket file descriptor para Datos
     int data_server_fd;
     if ((data_server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
@@ -154,7 +168,7 @@ int main() {
         perror("setsockopt data");
         exit(EXIT_FAILURE);
     }
-    
+
     struct sockaddr_in data_address;
     data_address.sin_family = AF_INET;
     data_address.sin_addr.s_addr = INADDR_ANY;
@@ -238,7 +252,7 @@ void process_command(int client_socket, int data_server_fd, const char *json_str
         if (d) {
             while ((dir = readdir(d)) != NULL) {
                 if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0) continue;
-                
+
                 char filepath[1024];
                 snprintf(filepath, sizeof(filepath), "%s/%s", DIR_ARCHIVOS, dir->d_name);
                 struct stat st;
@@ -246,7 +260,7 @@ void process_command(int client_socket, int data_server_fd, const char *json_str
                     cJSON *item = cJSON_CreateObject();
                     cJSON_AddStringToObject(item, "status", "ITEM");
                     cJSON_AddStringToObject(item, "nombre", dir->d_name);
-                    
+
                     if (S_ISDIR(st.st_mode)) {
                         cJSON_AddStringToObject(item, "tipo", "DIR");
                         cJSON_AddNumberToObject(item, "tamanio", 0);
@@ -260,22 +274,22 @@ void process_command(int client_socket, int data_server_fd, const char *json_str
             }
             closedir(d);
         }
-        
+
         cJSON *fin = cJSON_CreateObject();
         cJSON_AddStringToObject(fin, "status", "FIN_LIST");
         send_json(client_socket, fin);
         cJSON_Delete(fin);
-        
+
     } else if (strcmp(cmd, "UPLOAD") == 0 || strcmp(cmd, "FILE") == 0) {
         cJSON *nombre_item = cJSON_GetObjectItemCaseSensitive(json, "nombre");
         cJSON *tamanio_item = cJSON_GetObjectItemCaseSensitive(json, "tamanio");
         if (cJSON_IsString(nombre_item) && cJSON_IsNumber(tamanio_item)) {
             const char *nombre = nombre_item->valuestring;
             long tamanio = (long)tamanio_item->valuedouble;
-            
+
             // env OK
             send_ok(client_socket);
-            
+
             // WEsperar conexion de datos
             struct sockaddr_in data_addr;
             socklen_t data_addrlen = sizeof(data_addr);
@@ -283,7 +297,7 @@ void process_command(int client_socket, int data_server_fd, const char *json_str
             if (data_client >= 0) {
                 char filepath[1024];
                 snprintf(filepath, sizeof(filepath), "%s/%s", DIR_ARCHIVOS, nombre);
-                
+
                 FILE *fp = fopen(filepath, "wb");
                 if (fp) {
                     char buf[BUFFER_SIZE];
@@ -296,7 +310,7 @@ void process_command(int client_socket, int data_server_fd, const char *json_str
                         remaining -= n;
                     }
                     fclose(fp);
-                    
+
                     cJSON *ok = cJSON_CreateObject();
                     if (strcmp(cmd, "UPLOAD") == 0) {
                         cJSON_AddStringToObject(ok, "status", "UPLOAD_OK");
@@ -322,7 +336,7 @@ void process_command(int client_socket, int data_server_fd, const char *json_str
             const char *nombre = nombre_item->valuestring;
             char filepath[1024];
             snprintf(filepath, sizeof(filepath), "%s/%s", DIR_ARCHIVOS, nombre);
-            
+
             struct stat st;
             if (stat(filepath, &st) == 0 && S_ISREG(st.st_mode)) {
                 cJSON *resp = cJSON_CreateObject();
@@ -330,7 +344,7 @@ void process_command(int client_socket, int data_server_fd, const char *json_str
                 cJSON_AddNumberToObject(resp, "tamanio", st.st_size);
                 send_json(client_socket, resp);
                 cJSON_Delete(resp);
-                
+
                 struct sockaddr_in data_addr;
                 socklen_t data_addrlen = sizeof(data_addr);
                 int data_client = accept(data_server_fd, (struct sockaddr *)&data_addr, &data_addrlen);
@@ -405,7 +419,7 @@ void process_command(int client_socket, int data_server_fd, const char *json_str
         if (cJSON_IsString(nombre_item)) {
             char dirpath[1024];
             snprintf(dirpath, sizeof(dirpath), "%s/%s", DIR_ARCHIVOS, nombre_item->valuestring);
-            
+
             DIR *d = opendir(dirpath);
             if (d) {
                 // Count files
@@ -421,13 +435,13 @@ void process_command(int client_socket, int data_server_fd, const char *json_str
                     }
                 }
                 rewinddir(d);
-                
+
                 cJSON *resp = cJSON_CreateObject();
                 cJSON_AddStringToObject(resp, "status", "OK");
                 cJSON_AddNumberToObject(resp, "cantidad", count);
                 send_json(client_socket, resp);
                 cJSON_Delete(resp);
-                
+
                 while ((dir = readdir(d)) != NULL) {
                     if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0) continue;
                     char filepath[1024];
@@ -440,7 +454,7 @@ void process_command(int client_socket, int data_server_fd, const char *json_str
                         cJSON_AddNumberToObject(next_msg, "tamanio", st.st_size);
                         send_json(client_socket, next_msg);
                         cJSON_Delete(next_msg);
-                        
+
                         struct sockaddr_in data_addr;
                         socklen_t data_addrlen = sizeof(data_addr);
                         int data_client = accept(data_server_fd, (struct sockaddr *)&data_addr, &data_addrlen);
@@ -455,7 +469,7 @@ void process_command(int client_socket, int data_server_fd, const char *json_str
                                 fclose(fp);
                             }
                             close(data_client);
-                            
+
                             // Wait for NEXT_OK
                             char ok_buf[BUFFER_SIZE];
                             if (fgets(ok_buf, BUFFER_SIZE, stream) != NULL) {
@@ -484,17 +498,17 @@ void send_json(int socket, cJSON *json) {
         fprintf(stderr, "Failed to print json\n");
         return;
     }
-    
+
     // printf("Enviando: %s\n", string);
-    
+
     // AAgregar salto de linea para que el cliente sepa que es el final del mensaje
     size_t len = strlen(string);
     char *to_send = malloc(len + 2);
     strcpy(to_send, string);
     strcat(to_send, "\n");
-    
+
     send(socket, to_send, len + 1, 0);
-    
+
     free(to_send);
     cJSON_free(string);
 }

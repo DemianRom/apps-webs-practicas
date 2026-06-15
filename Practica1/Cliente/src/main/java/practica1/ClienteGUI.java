@@ -1,3 +1,17 @@
+/*
+ * Practica 1 - Servicio de transferencia de archivos
+ * Materia: Aplicaciones y Comunicaciones en Red (6CM1)
+ * ESCOM - IPN | Ingenieria en Sistemas Computacionales (6to semestre)
+ * Periodo: 26/2
+ *
+ * Integrantes:
+ * - Romero Bautista Demian
+ * - Ferreira Rodriguez Said
+ *
+ * Responsabilidad del archivo:
+ * Implementa la interfaz grafica Swing para navegar archivos locales/remotos y ejecutar operaciones del cliente.
+ */
+
 package practica1;
 
 import javax.swing.*;
@@ -19,20 +33,20 @@ public class ClienteGUI extends JFrame {
     private DefaultTableModel modeloRemota;
     private JLabel lblEstado;
     private JProgressBar progressBar;
-    
+
     public ClienteGUI() {
         super("Cliente de Transferencia de Archivos");
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         setSize(900, 600);
         setLocationRelativeTo(null);
-        
+
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
                 salir();
             }
         });
-        
+
         inicializarComponentes();
         configurarDragAndDrop();
     }
@@ -76,31 +90,31 @@ public class ClienteGUI extends JFrame {
 
         // --- TABLAS ---
         String[] columnas = {"Nombre", "Tipo", "Tamaño"};
-        
+
         modeloLocal = new DefaultTableModel(columnas, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
         tablaLocal = new JTable(modeloLocal);
-        
+
         modeloRemota = new DefaultTableModel(columnas, 0) {
             @Override
             public boolean isCellEditable(int row, int column) { return false; }
         };
         tablaRemota = new JTable(modeloRemota);
 
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, 
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                 new JScrollPane(tablaLocal), new JScrollPane(tablaRemota));
         splitPane.setResizeWeight(0.5);
-        
+
         JPanel pnlSplit = new JPanel(new BorderLayout());
         JLabel lblLoc = new JLabel("Archivos Locales (" + Cliente.getCarpetaLocal() + ")", SwingConstants.CENTER);
         JLabel lblRem = new JLabel("Archivos Remotos", SwingConstants.CENTER);
-        
+
         JPanel pnlTitles = new JPanel(new GridLayout(1,2));
         pnlTitles.add(lblLoc);
         pnlTitles.add(lblRem);
-        
+
         pnlSplit.add(pnlTitles, BorderLayout.NORTH);
         pnlSplit.add(splitPane, BorderLayout.CENTER);
 
@@ -112,27 +126,27 @@ public class ClienteGUI extends JFrame {
         progressBar = new JProgressBar(0, 100);
         progressBar.setStringPainted(true);
         progressBar.setVisible(false);
-        
+
         pnlEstado.add(lblEstado, BorderLayout.CENTER);
         pnlEstado.add(progressBar, BorderLayout.EAST);
         add(pnlEstado, BorderLayout.SOUTH);
 
         // --- EVENTOS ---
         btnActualizar.addActionListener(e -> refrescarListas());
-        
+
         btnSubirArchivo.addActionListener(e -> accionSubirArchivo());
         btnSubirCarpeta.addActionListener(e -> accionSubirCarpeta());
         btnEnviarServidor.addActionListener(e -> accionEnviarAlServidor());
         btnCrearCarpetaLocal.addActionListener(e -> accionCrearCarpetaLocal());
         btnCrearCarpetaRemoto.addActionListener(e -> accionCrearCarpetaRemoto());
         btnBajarArchivo.addActionListener(e -> accionDescargar());
-        
+
         btnBorrarLocal.addActionListener(e -> accionBorrarLocal());
         btnBorrarRemoto.addActionListener(e -> accionBorrarRemoto());
-        
+
         btnRenombrarLocal.addActionListener(e -> accionRenombrarLocal());
         btnRenombrarRemoto.addActionListener(e -> accionRenombrarRemoto());
-        
+
         // Doble click para renombrar
         tablaLocal.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent me) {
@@ -209,14 +223,14 @@ public class ClienteGUI extends JFrame {
                     }
                     return true;
                 } catch (Exception ex) {
-                    // Cierto límite de Linux en Java 21+ con Wayland / filemanagers. 
+                    // Cierto límite de Linux en Java 21+ con Wayland / filemanagers.
                     // No colapsa la app, así que lo ignoramos de forma segura.
                     return false;
                 }
             }
         });
     }
-    
+
     private void subirArchivoDrop(File origen) {
         // Como 'Cliente.subirArchivo' asume que el archivo está en 'carpetaLocal',
         // si viene de afuera, lo copiamos a la carpeta local primero.
@@ -231,7 +245,7 @@ public class ClienteGUI extends JFrame {
             }
             refrescarLocal();
         }
-        
+
         // No subir automáticamente al servidor: solo copiar a carpeta local.
         if (origen.isDirectory()) {
             // Copió la carpeta localmente; refrescar para mostrarla.
@@ -301,7 +315,7 @@ public class ClienteGUI extends JFrame {
         lblEstado.setText(" Obteniendo archivos remotos...");
         progressBar.setIndeterminate(true);
         progressBar.setVisible(true);
-        
+
         new SwingWorker<List<Cliente.ItemRemoto>, Void>() {
             @Override
             protected List<Cliente.ItemRemoto> doInBackground() {
@@ -408,7 +422,7 @@ public class ClienteGUI extends JFrame {
         }
         String nombre = (String) modeloRemota.getValueAt(row, 0);
         String tipo = (String) modeloRemota.getValueAt(row, 1);
-        
+
         lblEstado.setText(" Descargando " + nombre + "...");
         progressBar.setIndeterminate(true);
         progressBar.setVisible(true);
@@ -478,7 +492,7 @@ public class ClienteGUI extends JFrame {
             boolean ok;
             if ("DIR".equals(tipo)) ok = Cliente.renombrarCarpetaLocal(nombre, nuevo);
             else ok = Cliente.renombrarArchivoLocal(nombre, nuevo);
-            
+
             if (ok) refrescarLocal();
             else JOptionPane.showMessageDialog(this, "Error al renombrar local.");
         }
@@ -490,7 +504,7 @@ public class ClienteGUI extends JFrame {
         String nombre = (String) modeloRemota.getValueAt(row, 0);
         String tipo = (String) modeloRemota.getValueAt(row, 1);
         String nuevo = JOptionPane.showInputDialog(this, "Nuevo nombre:", nombre);
-        
+
         if (nuevo != null && !nuevo.isEmpty() && !nuevo.equals(nombre)) {
             lblEstado.setText(" Renombrando remoto...");
             new SwingWorker<Boolean, Void>() {
@@ -526,7 +540,7 @@ public class ClienteGUI extends JFrame {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5,5,5,5);
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        
+
         JTextField txtIp = new JTextField("127.0.0.1", 15);
         JTextField txtPuerto = new JTextField("8000", 10);
         JTextField txtCarpeta = new JTextField(Cliente.getCarpetaLocal(), 20);
@@ -541,10 +555,10 @@ public class ClienteGUI extends JFrame {
 
         gbc.gridx=0; gbc.gridy=0; dialog.add(new JLabel("IP Servidor:"), gbc);
         gbc.gridx=1; dialog.add(txtIp, gbc);
-        
+
         gbc.gridx=0; gbc.gridy=1; dialog.add(new JLabel("Puerto:"), gbc);
         gbc.gridx=1; dialog.add(txtPuerto, gbc);
-        
+
         gbc.gridx=0; gbc.gridy=2; dialog.add(new JLabel("Carpeta Local:"), gbc);
         gbc.gridx=1;
         JPanel pnlCarp = new JPanel(new BorderLayout());
@@ -553,14 +567,14 @@ public class ClienteGUI extends JFrame {
         dialog.add(pnlCarp, gbc);
 
         JButton btnConectar = new JButton("Conectar");
-        gbc.gridx=0; gbc.gridy=3; gbc.gridwidth=2; 
+        gbc.gridx=0; gbc.gridy=3; gbc.gridwidth=2;
         dialog.add(btnConectar, gbc);
 
         btnConectar.addActionListener(e -> {
             Cliente.setServerIp(txtIp.getText());
             try { Cliente.setPuertoMeta(Integer.parseInt(txtPuerto.getText())); } catch(Exception ex) {}
             Cliente.setCarpetaLocal(txtCarpeta.getText());
-            
+
             if (Cliente.conectarMetadatos()) {
                 dialog.dispose();
                 ClienteGUI gui = new ClienteGUI();
