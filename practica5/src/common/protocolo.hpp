@@ -8,6 +8,7 @@ using json = nlohmann::json;
 inline constexpr const char* T_UNIRSE        = "unirse";
 inline constexpr const char* T_CREAR_SALA    = "crear_sala";
 inline constexpr const char* T_MENSAJE       = "mensaje";
+inline constexpr const char* T_IMAGEN        = "imagen";
 inline constexpr const char* T_LISTAR_SALAS  = "listar_salas";
 inline constexpr const char* T_LISTAR_USERS  = "listar_usuarios";
 inline constexpr const char* T_SALIR         = "salir";
@@ -38,6 +39,12 @@ inline json lista_usuarios(const std::string& sala, const std::vector<std::strin
 
 inline json broadcast(const std::string& sala, const std::string& usuario, const std::string& contenido) {
     return { {"tipo", T_BROADCAST}, {"sala", sala}, {"usuario", usuario}, {"contenido", contenido} };
+}
+
+inline json imagen(const std::string& sala, const std::string& usuario,
+                   const std::string& nombre_archivo, const std::string& datos_b64) {
+    return { {"tipo", T_IMAGEN}, {"sala", sala}, {"usuario", usuario},
+             {"nombre_archivo", nombre_archivo}, {"datos", datos_b64} };
 }
 
 inline json sistema(const std::string& sala, const std::string& msg) {
