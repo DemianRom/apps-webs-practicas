@@ -1,0 +1,13 @@
+# Binarios compilados
+/server
+/client
+
+# Logs generados en runtime
+logs/*.log
+
+# Dependencia descargada automáticamente por el Makefile
+src/common/json.hpp
+
+# Objetos y temporales
+*.o
+*.out
