@@ -1,2 +1,4 @@
 #include "cliente.hpp"
-// La estructura es suficientemente simple; la lógica vive en chat_server.cpp
+// La estructura Cliente solo tiene datos y un metodo inline (registrado()).
+// Toda la logica que opera sobre clientes vive en chat_server.cpp. Este .cpp
+// existe para darle una unidad de compilacion propia dentro del Makefile.
