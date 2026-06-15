@@ -50,6 +50,7 @@ Cliente                          Servidor
 | `unirse`        | `sala`, `usuario`               | Registrarse en una sala            |
 | `crear_sala`    | `nombre`, `usuario`             | Crear nueva sala                   |
 | `mensaje`       | `sala`, `usuario`, `contenido`  | Enviar mensaje a la sala           |
+| `imagen`        | `sala`, `usuario`, `nombre_archivo`, `datos` | Enviar imagen (datos en base64) |
 | `listar_salas`  | —                               | Solicitar lista de salas activas   |
 | `listar_usuarios`| `sala` (opcional)              | Solicitar usuarios de una sala     |
 | `salir`         | —                               | Desconectarse limpiamente          |
@@ -62,6 +63,7 @@ Cliente                          Servidor
 | `lista_salas`    | `salas: []`                              | Lista de salas disponibles           |
 | `lista_usuarios` | `sala`, `usuarios: []`                   | Usuarios en una sala                 |
 | `broadcast`      | `sala`, `usuario`, `contenido`           | Mensaje de un usuario                |
+| `imagen`         | `sala`, `usuario`, `nombre_archivo`, `datos` | Imagen reenviada (base64)        |
 | `sistema`        | `sala`, `contenido`                      | Notificación del sistema             |
 | `historial`      | `sala`, `mensajes: []`                   | Historial al entrar a una sala       |
 | `error`          | `mensaje`                                | Descripción del error                |

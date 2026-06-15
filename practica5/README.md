@@ -93,10 +93,13 @@ Al iniciar, el cliente entra automáticamente a la sala `#general`.
 | Comando              | Descripción                              |
 |----------------------|------------------------------------------|
 | `<texto>`            | Enviar mensaje a la sala actual          |
+| `@usuario`           | Mencionar a alguien (se le resalta)      |
 | `/sala <nombre>`     | Unirse a una sala existente o nueva      |
 | `/nueva <nombre>`    | Crear una sala nueva                     |
 | `/salas`             | Listar todas las salas disponibles       |
 | `/usuarios`          | Listar usuarios en la sala actual        |
+| `/img <ruta>`        | Enviar una imagen a la sala (max 2MB)    |
+| `/ver [n]`           | Ver una imagen recibida (n, o la última) |
 | `/help`              | Mostrar este menú de ayuda               |
 | `/salir`             | Salir del chat                           |
 | `Tab`                | Cambiar a la siguiente sala              |
@@ -141,6 +144,34 @@ El cliente usa **dos hilos**: uno para la TUI de ncurses (hilo principal) y otro
 mensajes del servidor (`recv`), usando un `mutex` para sincronizar el estado compartido.
 
 ---
+
+## Imágenes (Kitty Graphics Protocol)
+
+Se pueden compartir imágenes en el chat con `/img <ruta>`. El cliente lee el archivo,
+lo codifica en base64 y lo envía dentro de un mensaje JSON (`tipo: "imagen"`), que el
+servidor reenvía a todos los miembros de la sala.
+
+Al recibir una imagen, el cliente la decodifica a un archivo temporal en
+`/tmp/chat_p5/` y muestra un marcador en el chat:
+
+```
+🖼  [0] foto.png (de Alice)  —  /ver 0
+```
+
+Con `/ver 0` (o `/ver` para la última) se visualiza la imagen:
+
+- Si estás en la terminal **Kitty**, se renderiza inline con `kitty +kitten icat`
+  (Kitty Graphics Protocol).
+- En cualquier otra terminal, se abre con el visor del sistema (`xdg-open`).
+
+Límite: 2 MB por imagen. Las imágenes no se guardan en el historial del servidor
+(solo una nota ligera `Alice compartió la imagen: foto.png`).
+
+## Menciones
+
+Si escribes `@usuario` en un mensaje, ese nombre se resalta en amarillo para todos.
+Cuando **a ti** te mencionan, tu línea completa se marca en negrita con una flecha `►`
+al inicio, para que notes el ping aunque tengas muchos mensajes.
 
 ## Historial persistente
 
